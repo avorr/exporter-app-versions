@@ -7,7 +7,7 @@ import datetime
 from flask import Flask
 from threading import Thread
 
-from modulesVersion import getPprb3Versions
+from modulesVersion import get_pprb3_versions
 from env import portal_info
 
 app = Flask(__name__)
@@ -25,11 +25,11 @@ def write_to_json():
     """
     while True:
         try:
-            server_output = getPprb3Versions(next(iter(portal_info)))
+            server_output = get_pprb3_versions(next(iter(portal_info)))
             with open(json_path, 'w') as json_file:
                 json.dump({'info': server_output, 'update_time': str(datetime.datetime.now())}, json_file)
                 print('###' * 30, 'UPDATE JSON', '###' * 30)
-            time.sleep(3600)
+            time.sleep(3600 * 3.5)
         except NameError as error:
             print(error)
 
