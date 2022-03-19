@@ -172,7 +172,7 @@ def get_pprb3_versions(portal_name: str) -> list:
     info = list()
 
     for cloud_project in cloud_projects['stdout']['projects']:
-        print(cloud_project['name'], cloud_project['id'])
+        # print(cloud_project['name'], cloud_project['id'])
 
         project_modules_info: dict = {
             'project_id': cloud_project['id'],
@@ -226,7 +226,8 @@ def get_pprb3_versions(portal_name: str) -> list:
             info.append(project_modules_info)
 
             for postgres_vm in all_postgres_vms:
-                # print('PGSE', postgres_vm)
+                if 'etcd-' not in postgres_vm['service_name']:
+                    # print('PGSE', postgres_vm)
                 # shell_command = "$(whereis -b psql | awk {'print $2'}) --version"
                 # shell_command = "$(whereis -b psql | awk {'print $2'}) --version | " \
                 #                "awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}'"
@@ -240,27 +241,27 @@ def get_pprb3_versions(portal_name: str) -> list:
                 # shell_command: str = "$(whereis -b psql | awk {'print $2'}) --version | awk '{$1=""; print $0}'"
 
                 # shell_command: str = """$(whereis -b psql | awk {'print $2'}) --version | awk '{$1=""; print $0}'"""
-                shell_command: str = \
-                    "$(find / -user postgres -group postgres -path '*pgsql/bin/psql*' -type f 2>/dev/null) --version"
+                    shell_command: str = \
+                        "$(find / -user postgres -group postgres -path '*pgsql/bin/psql*' -type f 2>/dev/null) --version"
 
-                pgsqlse_version: str = remote_execute(shell_command, postgres_vm['ip'], ssh_login, ssh_pass)
+                    pgsqlse_version: str = remote_execute(shell_command, postgres_vm['ip'], ssh_login, ssh_pass)
                 # print(pgsqlse_version)
 
-                if isinstance(pgsqlse_version, dict):
-                    # print(nginx_version, '*******8')
-                    pgsqlse_version: str = pgsqlse_version['ERROR']
+                    if isinstance(pgsqlse_version, dict):
+                        # print(nginx_version, '*******8')
+                        pgsqlse_version: str = pgsqlse_version['ERROR']
 
-                if not pgsqlse_version:
-                    pgsqlse_version: str = f"ERROR: Psql binary not found on {postgres_vm['name']}, {postgres_vm['ip']}"
-                project_modules_info['modules_version'].append({
-                    'tag': 'postgres',
-                    'ip': postgres_vm['ip'],
-                    'id': postgres_vm['id'],
-                    'name': postgres_vm['name'],
-                    'service_name': postgres_vm['service_name'],
-                    'version': pgsqlse_version.strip()
-                })
-
+                    if not pgsqlse_version:
+                        pgsqlse_version: str = f"ERROR: Psql binary not found on {postgres_vm['name']}, {postgres_vm['ip']}"
+                    project_modules_info['modules_version'].append({
+                        'tag': 'postgres',
+                        'ip': postgres_vm['ip'],
+                        'id': postgres_vm['id'],
+                        'name': postgres_vm['name'],
+                        'service_name': postgres_vm['service_name'],
+                        'version': pgsqlse_version.strip()
+                    })
+                # return
 
             for nginx_vm in all_nginx_vms:
                 shell_command: str = \
