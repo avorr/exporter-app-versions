@@ -24,7 +24,7 @@ def write_to_file(object: str):
         file.write('%s = %s' % (object[:separator], object[(separator + 1):]))
 
 
-def get_pprb3_versions(portal_name: str) -> list:
+def get_app_versions(portal_name: str) -> list:
     """
     main func to get info from servers
     :param portal_name:
@@ -41,24 +41,26 @@ def get_pprb3_versions(portal_name: str) -> list:
             'user-agent': 'CMDB',
             'Content-type': 'application/json',
             'Accept': 'text/plain',
-            'authorization': 'Token %s' % portal_info[portal_name]['token']}
+            'authorization': 'Token %s' % portal_info[portal_name]['token']
+        }
         response = requests.get('%s%s' % (portal_info[portal_name]['url'], api_method), headers=headers, verify=False)
         return dict(stdout=json.loads(response.content), status_code=response.status_code)
 
-    # wildflyTag = max(filter(lambda x: x['tag_name'] == 'wildfly', portal_api('dict/tags')['stdout']['tags']))
-    pprb3_tags = portal_api('dict/tags')['stdout']['tags']
-    pprb3_tags = filter(lambda x: x['tag_name'] in ('wildfly', 'postgres', 'iam', 'kafkase'), pprb3_tags)
-    pprb3_tags: dict = {tag['tag_name']: tag['id'] for tag in pprb3_tags}
-    # pprb3_tags = {'postgres': '0c893657-aa08-4f4c-8e2b-da386a1f53cd', 'wildfly': 'fac9523e-a251-4847-b8ab-687655813559'}
+    app_tags: list = portal_api('dict/tags')['stdout']['tags']
 
-    # from cloud_domains import cloud_domains
-    cloud_domains = portal_api('domains')
-    cloud_domains = {key['id']: key['name'] for key in cloud_domains['stdout']['domains']}
+    app_tags: dict = {
+        tag['tag_name']: tag['id'] for tag in filter(
+            lambda x: x['tag_name'] in ('wildfly', 'postgres', 'iam', 'kafka'), app_tags
+        )
+    }
 
-    cloud_projects = portal_api('projects')
+    cloud_domains: dict = portal_api('domains')
 
-    # write_to_file(f'{cloud_projects=}')
-    # from cloud_projects import cloud_projects
+    cloud_domains: dict = {
+        key['id']: key['name'] for key in cloud_domains['stdout']['domains']
+    }
+
+    cloud_projects: dict = portal_api('projects')
 
     def check_port(checked_host: str) -> bool:
         """
@@ -66,7 +68,6 @@ def get_pprb3_versions(portal_name: str) -> list:
         :param checked_host:
         :return: bool
         """
-        # while time.time()
         if not checked_host:
             return False
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -82,6 +83,7 @@ def get_pprb3_versions(portal_name: str) -> list:
         headers: dict = {
             'Content-type': 'application/json'
         }
+
         payload: dict = {
             "operation": "read-attribute",
             "address": [{"deployment": "*"}],
@@ -93,7 +95,9 @@ def get_pprb3_versions(portal_name: str) -> list:
                 response = requests.get('http://%s:9990/management' % host, auth=HTTPDigestAuth('admin', 'admin'),
                                         headers=headers, data=json.dumps(payload), timeout=5)
             except requests.exceptions.RequestException as error:
-                return {'ERROR': str(error)}
+                return {
+                    'ERROR': str(error)
+                }
                 # raise SystemExit(error)
 
             if response.status_code == 200:
@@ -104,13 +108,19 @@ def get_pprb3_versions(portal_name: str) -> list:
                 if response.status_code == 200:
                     return json.loads(response.content)
                 else:
-                    return {'ERROR': 'WildFly is Unreacheble'}
+                    return {
+                        'ERROR': 'WildFly is Unreachable'
+                    }
             else:
-                return {'ERROR': 'WildFly is Unreacheble'}
+                return {
+                    'ERROR': 'WildFly is Unreachable'
+                }
         else:
-            return {'ERROR': 'The port 9990 is not available on the host ----> %s' % host}
+            return {
+                'ERROR': 'The port 9990 is not available on the host ----> %s' % host
+            }
 
-    def remote_execute(command: str, vm_ip: str, username: str, password: str, multiprocess=False):
+    def remote_execute(command: str, vm_ip: str, username: str, password: str, multiprocess=False) -> list | str | dict:
         """
         func to remote command execute on vms
         :param command:
@@ -164,15 +174,9 @@ def get_pprb3_versions(portal_name: str) -> list:
                 "ERROR": "unknown connection error to %s" % vm_ip
             }
 
-    # cloud_projects['stdout']['projects'] = tuple(filter(lambda x: x['name'] == 'gt-foms-prod-platform',
-    #                                                     cloud_projects['stdout']['projects']))
-
-    # list(filter(lambda x: x['id'] == 'e594bc83-938c-48c4-a208-038aedad01de', cloud_projects['stdout']['projects']))
-
     info = list()
 
     for cloud_project in cloud_projects['stdout']['projects']:
-        # print(cloud_project['name'], cloud_project['id'])
 
         project_modules_info: dict = {
             'project_id': cloud_project['id'],
@@ -184,27 +188,24 @@ def get_pprb3_versions(portal_name: str) -> list:
             # 'service_name': wildfly_vm['service_name'],
             'modules_version': list()
         }
-        project_vms: dict = portal_api(f"servers?project_id={cloud_project['id']}")['stdout']
-        # write_to_file(f'{project_vms=}')
-        # from project_vms import project_vms
+
+        project_vms: dict = portal_api("servers?project_id=%s" % cloud_project['id'])['stdout']
+
         if project_vms['servers']:
             all_wildfly_vms, all_postgres_vms, all_nginx_vms, all_kafka_vms = list(), list(), list(), list()
             for server in project_vms['servers']:
                 if server['tag_ids']:
-                    if pprb3_tags['wildfly'] in server['tag_ids']:
+                    if app_tags['wildfly'] in server['tag_ids']:
                         all_wildfly_vms.append(server)
-                    if pprb3_tags['postgres'] in server['tag_ids']:
+                    if app_tags['postgres'] in server['tag_ids']:
                         all_postgres_vms.append(server)
-                    if pprb3_tags['iam'] in server['tag_ids']:
+                    if app_tags['iam'] in server['tag_ids']:
                         all_nginx_vms.append(server)
-                    if pprb3_tags['kafkase'] in server['tag_ids']:
+                    if app_tags['kafka'] in server['tag_ids']:
                         all_kafka_vms.append(server)
 
-            # if all_wildfly_vms:
-            # wfInfo = list()
             for wildfly_vm in all_wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm['ip'])
-                # print(wf_info_tmp)
                 if next(iter(wf_info_tmp)) != 'ERROR':
                     wf_info_tmp: dict = {
                         'name': wf_info_tmp['name'],
@@ -213,102 +214,95 @@ def get_pprb3_versions(portal_name: str) -> list:
                         'deployment': wf_info_tmp['deployment'],
                         'deployment-overlay': wf_info_tmp['deployment-overlay']
                     }
-                project_modules_info['modules_version'].append({
-                    'tag': 'wildfly',
-                    'ip': wildfly_vm['ip'],
-                    'id': wildfly_vm['id'],
-                    'name': wildfly_vm['name'],
-                    'service_name': wildfly_vm['service_name'],
-                    'version': wf_info_tmp
-                })
-            # info.append(dict(project_id=cloud_project['id'], project_name=cloud_project['name'],
-            #                  pprb3_services=project_modules_info))
+                project_modules_info['modules_version'].append(
+                    {
+                        'tag': 'wildfly',
+                        'ip': wildfly_vm['ip'],
+                        'id': wildfly_vm['id'],
+                        'name': wildfly_vm['name'],
+                        'service_name': wildfly_vm['service_name'],
+                        'version': wf_info_tmp
+                    }
+                )
+
             info.append(project_modules_info)
 
             for postgres_vm in all_postgres_vms:
                 if 'etcd-' not in postgres_vm['service_name']:
-                    # print('PGSE', postgres_vm)
-                # shell_command = "$(whereis -b psql | awk {'print $2'}) --version"
-                # shell_command = "$(whereis -b psql | awk {'print $2'}) --version | " \
-                #                "awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}'"
 
-                # shell_command: str = "printf $($(whereis -b psql | awk {'print $2'}) --version | " \
-                #                     "awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')"
-
-                # shell_command: str = "$(whereis -b psql | awk {'print $2'}) --version | " \
-                #                     "awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}' |tr '\n' ' '"
-
-                # shell_command: str = "$(whereis -b psql | awk {'print $2'}) --version | awk '{$1=""; print $0}'"
-
-                # shell_command: str = """$(whereis -b psql | awk {'print $2'}) --version | awk '{$1=""; print $0}'"""
                     shell_command: str = \
-                        "$(find / -user postgres -group postgres -path '*pgsql/bin/psql*' -type f 2>/dev/null) --version"
+                        "$(find /usr -user postgres -group postgres -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version"
 
-                    pgsqlse_version: str = remote_execute(shell_command, postgres_vm['ip'], ssh_login, ssh_pass)
-                # print(pgsqlse_version)
+                    pgsql_version: str = remote_execute(shell_command, postgres_vm['ip'], ssh_login, ssh_pass)
 
-                    if isinstance(pgsqlse_version, dict):
-                        # print(nginx_version, '*******8')
-                        pgsqlse_version: str = pgsqlse_version['ERROR']
+                    if isinstance(pgsql_version, dict):
+                        pgsql_version: str = pgsql_version['ERROR']
 
-                    if not pgsqlse_version:
-                        pgsqlse_version: str = f"ERROR: Psql binary not found on {postgres_vm['name']}, {postgres_vm['ip']}"
-                    project_modules_info['modules_version'].append({
-                        'tag': 'postgres',
-                        'ip': postgres_vm['ip'],
-                        'id': postgres_vm['id'],
-                        'name': postgres_vm['name'],
-                        'service_name': postgres_vm['service_name'],
-                        'version': pgsqlse_version.strip()
-                    })
-                # return
+                    if not pgsql_version:
+                        pgsql_version: str = \
+                            "ERROR: Psql binary not found on %s, %s" % (postgres_vm['name'], postgres_vm['ip'])
+                    project_modules_info['modules_version'].append(
+                        {
+                            'tag': 'postgres',
+                            'ip': postgres_vm['ip'],
+                            'id': postgres_vm['id'],
+                            'name': postgres_vm['name'],
+                            'service_name': postgres_vm['service_name'],
+                            'version': pgsql_version.strip()
+                        }
+                    )
 
             for nginx_vm in all_nginx_vms:
                 shell_command: str = \
                     "test -f /usr/local/openresty/nginx/sbin/nginx && /usr/local/openresty/nginx/sbin/nginx -v"
                 nginx_version: str = remote_execute(shell_command, nginx_vm['ip'], ssh_login, ssh_pass)
-                # print(nginx_version)
 
                 if not nginx_version:
-                    nginx_version: str = f"ERROR: Nginx binary not found on {nginx_vm['name']}, {nginx_vm['ip']}"
+                    nginx_version: str = "ERROR: Nginx binary not found on %s, %s" % (nginx_vm['name'], nginx_vm['ip'])
 
                 if isinstance(nginx_version, dict):
                     nginx_version: str = nginx_version['ERROR']
 
-                project_modules_info['modules_version'].append({
-                    'tag': 'iam',
-                    'ip': nginx_vm['ip'],
-                    'id': nginx_vm['id'],
-                    'name': nginx_vm['name'],
-                    'service_name': nginx_vm['service_name'],
-                    'version': nginx_version.strip()
-                })
+                project_modules_info['modules_version'].append(
+                    {
+                        'tag': 'iam',
+                        'ip': nginx_vm['ip'],
+                        'id': nginx_vm['id'],
+                        'name': nginx_vm['name'],
+                        'service_name': nginx_vm['service_name'],
+                        'version': nginx_version.strip()
+                    }
+                )
 
             for kafka_vm in all_kafka_vms:
                 shell_command: str = \
-                    "basename $(find / -user kafka -group kafka -path '*kafka/libs*' -type d 2>/dev/null)/kafka_*[[:digit:]].jar"
+                    "basename $(find /opt -user kafka -group kafka -path '*kafka/libs/kafka_*.jar' -print -quit -type f 2>/dev/null)"
+                # "basename $(find / -user kafka -group kafka -path '*kafka/libs*' -type d 2>/dev/null)/kafka_*[[:digit:]].jar"
 
                 kafka_version: str = remote_execute(shell_command, kafka_vm['ip'], ssh_login, ssh_pass)
 
                 if not kafka_version:
-                    kafka_version: str = f"ERROR: Kafka binary not found on {kafka_vm['name']}, {kafka_vm['ip']}"
+                    kafka_version: str = "ERROR: Kafka binary not found on %s, %s" % (kafka_vm['name'], kafka_vm['ip'])
 
                 if isinstance(kafka_version, dict):
                     kafka_version: str = kafka_version['ERROR']
 
-                project_modules_info['modules_version'].append({
-                    'tag': 'kafka',
-                    'ip': kafka_vm['ip'],
-                    'id': kafka_vm['id'],
-                    'name': kafka_vm['name'],
-                    'service_name': kafka_vm['service_name'],
-                    'version': kafka_version.strip()[6:-4]
-                })
+                project_modules_info['modules_version'].append(
+                    {
+                        'tag': 'kafka',
+                        'ip': kafka_vm['ip'],
+                        'id': kafka_vm['id'],
+                        'name': kafka_vm['name'],
+                        'service_name': kafka_vm['service_name'],
+                        'version': kafka_version.strip()[6:-4]
+                    }
+                )
 
     return info
 
+
 if __name__ == '__main__':
-    get_pprb3_versions(next(iter(portal_info)))
+    get_app_versions(next(iter(portal_info)))
 
 # def rsh(command: str, vm_ip: str, username: str, password: str, multitreading=False):
 #     try:
