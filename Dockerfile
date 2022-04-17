@@ -2,7 +2,8 @@ FROM python:3
 
 ENV TZ=Europe/Moscow
 
-#RUN apt update && apt install vim curl -y
+ENV PYTHONWARNINGS="ignore:Unverified HTTPS request"
+
 RUN pip3 install --no-cache --upgrade \
                               flask \
                               loguru \

@@ -1,0 +1,6 @@
+.git
+.gitignore
+__init__.py
+info.py
+test.py
+.idea
