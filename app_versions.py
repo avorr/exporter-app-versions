@@ -51,8 +51,10 @@ def get_app_versions(portal_name: str) -> list:
         )
     }
 
+
     cloud_domains: dict = portal_api("domains")
 
+    
     cloud_domains: dict = {
         key["id"]: key["name"] for key in cloud_domains["stdout"]["domains"]
     }

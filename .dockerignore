@@ -4,3 +4,4 @@ __init__.py
 info.py
 test.py
 .idea
+__pycache__

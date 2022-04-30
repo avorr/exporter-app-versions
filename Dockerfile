@@ -4,12 +4,12 @@ ENV TZ=Europe/Moscow
 
 ENV PYTHONWARNINGS="ignore:Unverified HTTPS request"
 
-RUN pip3 install --no-cache --upgrade \
-                              flask \
-                              loguru \
-                              requests \
-                              paramiko \
-                              pyopenssl
+RUN set -ex && pip3 install --no-cache --upgrade \
+                                         flask \
+                                         loguru \
+                                         requests \
+                                         paramiko
+#                              pyopenssl
 
 COPY . /opt/
 
