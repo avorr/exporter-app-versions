@@ -4,15 +4,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0370073e-70d9-4d11-9ffc-574d70415042" name="Changes" comment="fining binary pgsql fixed. PLAT-10331">
-      <change afterPath="$PROJECT_DIR$/deployment.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ingress.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/service.yaml" afterDir="false" />
+    <list default="true" id="0370073e-70d9-4d11-9ffc-574d70415042" name="Changes" comment="add cron to apps-exporter. PLAT-11118">
+      <change afterPath="$PROJECT_DIR$/Dockerfile-old" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configmap.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/main.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/update-json-cron" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.dockerignore" beforeDir="false" afterPath="$PROJECT_DIR$/.dockerignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app-versions.json" beforeDir="false" afterPath="$PROJECT_DIR$/app-versions.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dockerfile-cron" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/app_versions.py" beforeDir="false" afterPath="$PROJECT_DIR$/app_versions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crontab" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/deployment.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/env.py" beforeDir="false" afterPath="$PROJECT_DIR$/env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hello-cron" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/update-json.py" beforeDir="false" afterPath="$PROJECT_DIR$/update-json.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/versions-exporter.py" beforeDir="false" afterPath="$PROJECT_DIR$/versions-exporter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -52,10 +59,16 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;TF_FMT&quot;: &quot;false&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
+    &quot;last_opened_file_path&quot;: &quot;/Users/user/projects/exporter-apps-versions&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
 }</component>
-  <component name="RunManager" selected="Python.app_versions">
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Flask server.Flask (versions-exporter.py)">
     <configuration name="app_versions" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="exporter-apps-versions" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -101,12 +114,29 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="Flask (versions-exporter.py)" type="Python.FlaskServer" temporary="true" nameIsGenerated="true">
+      <module name="exporter-apps-versions" />
+      <option name="target" value="$PROJECT_DIR$/versions-exporter.py" />
+      <option name="targetType" value="PATH" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="launchJavascriptDebuger" value="false" />
+      <method v="2" />
+    </configuration>
     <list>
+      <item itemvalue="Flask server.Flask (versions-exporter.py)" />
       <item itemvalue="Python.exporter-apps-versions" />
       <item itemvalue="Python.app_versions" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Flask server.Flask (versions-exporter.py)" />
         <item itemvalue="Python.app_versions" />
       </list>
     </recent_temporary>
@@ -134,7 +164,11 @@
       <workItem from="1650892786217" duration="8536000" />
       <workItem from="1650901383923" duration="29000" />
       <workItem from="1651065992156" duration="319000" />
-      <workItem from="1651338563728" duration="4743000" />
+      <workItem from="1651338563728" duration="4910000" />
+      <workItem from="1651400264918" duration="2642000" />
+      <workItem from="1651579072725" duration="15000" />
+      <workItem from="1651602361699" duration="11290000" />
+      <workItem from="1651662323907" duration="5816000" />
     </task>
     <task id="LOCAL-00001" summary="fining binary pgsql fixed. PLAT-10331">
       <created>1650239103562</created>
@@ -143,7 +177,21 @@
       <option name="project" value="LOCAL" />
       <updated>1650239103562</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="add deployments for K8s. PLAT-10714">
+      <created>1651348244402</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1651348244402</updated>
+    </task>
+    <task id="LOCAL-00003" summary="add cron to apps-exporter. PLAT-11118">
+      <created>1651403645096</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1651403645096</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -159,9 +207,12 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="fining binary pgsql fixed. PLAT-10331" />
-    <option name="LAST_COMMIT_MESSAGE" value="fining binary pgsql fixed. PLAT-10331" />
+    <MESSAGE value="add deployments for K8s. PLAT-10714" />
+    <MESSAGE value="add cron to apps-exporter. PLAT-11118" />
+    <option name="LAST_COMMIT_MESSAGE" value="add cron to apps-exporter. PLAT-11118" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/exporter_apps_versions$app_versions.coverage" NAME="app_versions Coverage Results" MODIFIED="1650881746747" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/exporter_apps_versions$app_versions.coverage" NAME="app_versions Coverage Results" MODIFIED="1651608430774" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/exporter_apps_versions$Flask__versions_exporter_py_.coverage" NAME="Flask (versions-exporter.py) Coverage Results" MODIFIED="1651613393641" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

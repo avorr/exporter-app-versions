@@ -1,1 +1,0 @@
-* * * * * echo 'hello from docker container $(date)' >> /var/log/cron.log 2>&1

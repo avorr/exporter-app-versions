@@ -1,0 +1,4 @@
+# must be ended with a new line "LF" (Unix)
+*/210 * * * * /usr/local/bin/python3 /opt/update-json.py >> /var/log/cron.log 2>&1
+# * * * * * /usr/local/bin/python3 /opt/update-json.py >> /var/log/cron.log 2>&1
+# An empty line is required at the end of this file for a valid cron file.

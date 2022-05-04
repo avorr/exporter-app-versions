@@ -2,7 +2,7 @@
 
 import os
 
-from creds import *
+# from creds import *
 
 ssh_login: str = os.environ['SSH_LOGIN']
 ssh_pass: str = os.environ['SSH_PASS']

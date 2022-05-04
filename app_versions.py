@@ -1,5 +1,6 @@
-#!/usr/bin/python3
+#!/usr/local/bin/python3
 
+# import os
 import time
 import json
 import socket
@@ -9,6 +10,13 @@ from requests.auth import HTTPDigestAuth
 
 from env import portal_info
 from env import ssh_login, ssh_pass
+
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
+# os.environ["PYTHONWARNINGS"] = "ignore:Unverified HTTPS request"
 
 
 def json_read(json_object: dict) -> None:
@@ -51,10 +59,8 @@ def get_app_versions(portal_name: str) -> list:
         )
     }
 
-
     cloud_domains: dict = portal_api("domains")
 
-    
     cloud_domains: dict = {
         key["id"]: key["name"] for key in cloud_domains["stdout"]["domains"]
     }
@@ -70,7 +76,7 @@ def get_app_versions(portal_name: str) -> list:
         if not checked_host:
             return False
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(5)
+            s.settimeout(3)
             return s.connect_ex((checked_host, 9990)) == 0
 
     def get_wf_info(host: str) -> dict:
@@ -306,7 +312,6 @@ if __name__ == "__main__":
     # ssh = paramiko.SSHClient()
     # ssh.connect(server, username=username, password=password)
     # ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd_to_execute)
-
 
 # def rsh(command: str, vm_ip: str, username: str, password: str, multitreading=False):
 #     try:

@@ -3,8 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-deployment
+  namespace: slurm
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: exporter-apps-versions
@@ -20,26 +21,61 @@ spec:
     spec:
       containers:
         - name: exporter-apps-versions
-          image: base.sw.sbc.space/pid/pid_registry/exporter-apps-versions/exporter-apps-versions:0.0.1
+          image: base.sw.sbc.space/pid/pid_registry/exporter-apps-versions/exporter-apps-versions:0.0.2
           ports:
             - containerPort: 5002
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /PD15versions
-              port: 5002
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /PD15versions
-              port: 5002
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-            initialDelaySeconds: 10
+          env:
+            # Define the environment variable
+            - name: PORTAL_URL_PD15
+              valueFrom:
+                configMapKeyRef:
+                  # The ConfigMap containing the value you want to assign to SPECIAL_LEVEL_KEY
+                  name: my-configmap
+                  # Specify the key associated with the value
+                  key: PORTAL_URL_PD15
+            - name: OS_METRICS_PD15
+              valueFrom:
+                configMapKeyRef:
+                  # The ConfigMap containing the value you want to assign to SPECIAL_LEVEL_KEY
+                  name: my-configmap
+                  # Specify the key associated with the value
+                  key: OS_METRICS_PD15
+            - name: SSH_LOGIN
+              valueFrom:
+                secretKeyRef:
+                  name: ansible-pid
+                  key: login
+            - name: SSH_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: ansible-pid
+                  key: password
+            - name: PORTAL_TOKEN_PD15
+              valueFrom:
+                secretKeyRef:
+                  name: portal-token-pd15
+                  key: token
+
+
+#          readinessProbe:
+#            failureThreshold: 3
+#            httpGet:
+#              path: /versions-pd15
+#              port: 5002
+#            periodSeconds: 10
+#            successThreshold: 1
+#            timeoutSeconds: 1
+#          livenessProbe:
+#            failureThreshold: 3
+#            httpGet:
+#              path: /versions-pd15
+#              port: 5002
+#            periodSeconds: 10
+#            successThreshold: 1
+#            timeoutSeconds: 1
+#            initialDelaySeconds: 10
+
+
 #          resources:
 #            requests:
 #              cpu: 500m
@@ -47,25 +83,23 @@ spec:
 #            limits:
 #              cpu: 1000m
 #              memory: 1000Mi
-      imagePullSecrets:
-        - name: regcred
-
-
 
 #          volumeMounts:
 #            - name: config
 #              mountPath: /etc/nginx/conf.d/
-#      volumes:
-#        - name: config
-#          configMap:
-#            name: my-configmap
-
+      volumes:
+        - name: config
+          configMap:
+            name: my-configmap
+      imagePullSecrets:
+        - name: regcred
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: exporter-apps-versions-service
+  namespace: slurm
 spec:
   type: ClusterIP
   ports:
@@ -81,7 +115,7 @@ kind: Ingress
 
 metadata:
   name: exporter-apps-versions-ingress
-#  namespace: default
+  namespace: slurm
 spec:
   defaultBackend:
     service:
