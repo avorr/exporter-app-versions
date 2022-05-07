@@ -7,7 +7,7 @@ import datetime
 from app_versions import get_app_versions
 from env import portal_info
 
-os.environ["PYTHONWARNINGS"] = "ignore:Unverified HTTPS request"
+# os.environ["PYTHONWARNINGS"] = "ignore:Unverified HTTPS request"
 
 json_path: str = '/opt/app-versions.json'
 host: str = '0.0.0.0'

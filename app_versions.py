@@ -11,9 +11,9 @@ from requests.auth import HTTPDigestAuth
 from env import portal_info
 from env import ssh_login, ssh_pass
 
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
+# from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 # os.environ["PYTHONWARNINGS"] = "ignore:Unverified HTTPS request"
@@ -302,7 +302,6 @@ def get_app_versions(portal_name: str) -> list:
                         "version": kafka_version.strip()[6:-4]
                     }
                 )
-
     return info
 
 

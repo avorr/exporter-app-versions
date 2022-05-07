@@ -3,8 +3,10 @@
 import os
 import json
 from flask import Flask
-
 from env import portal_info
+from threading import Thread
+
+from update_json import write_to_json
 
 app = Flask(__name__)
 
@@ -27,5 +29,6 @@ def summary() -> dict:
             return json.load(json_file)
 
 
-if __name__ == "__main__":
-    run_web_server()
+if __name__ in ("__main__", "exporter-apps-versions.versions-exporter"):
+    Thread(target=write_to_json()).start()
+    Thread(target=run_web_server()).start()
