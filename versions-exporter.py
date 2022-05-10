@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/local/bin/python3
 
 import os
 import json
@@ -30,5 +30,5 @@ def summary() -> dict:
 
 
 if __name__ in ("__main__", "exporter-apps-versions.versions-exporter"):
-    Thread(target=write_to_json()).start()
-    Thread(target=run_web_server()).start()
+    Thread(target=run_web_server).start()
+    Thread(target=write_to_json).start()

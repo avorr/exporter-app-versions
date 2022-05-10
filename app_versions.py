@@ -1,6 +1,5 @@
 #!/usr/local/bin/python3
 
-# import os
 import time
 import json
 import socket
@@ -10,13 +9,6 @@ from requests.auth import HTTPDigestAuth
 
 from env import portal_info
 from env import ssh_login, ssh_pass
-
-# from requests.packages.urllib3.exceptions import InsecureRequestWarning
-
-# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-
-# os.environ["PYTHONWARNINGS"] = "ignore:Unverified HTTPS request"
 
 
 def json_read(json_object: dict) -> None:
@@ -66,6 +58,12 @@ def get_app_versions(portal_name: str) -> list:
     }
 
     cloud_projects: dict = portal_api("projects")
+
+    # for i in cloud_projects['stdout']['projects']:
+    #     if i['name'] == 'gt-dvp-dev-admin':
+    # if i['name'] == 'gt-dvp-dev-platform':
+    # print(i)
+    # cloud_projects['stdout']['projects'] = [i]
 
     def check_port(checked_host: str) -> bool:
         """

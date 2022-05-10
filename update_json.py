@@ -1,13 +1,11 @@
 #!/usr/local/bin/python3
 
-import os
 import json
 import datetime
+import os
 
 from app_versions import get_app_versions
 from env import portal_info
-
-# os.environ["PYTHONWARNINGS"] = "ignore:Unverified HTTPS request"
 
 json_path: str = '/opt/app-versions.json'
 host: str = '0.0.0.0'
@@ -26,6 +24,15 @@ def write_to_json() -> None:
                     'info': server_output, 'update_time': str(datetime.datetime.now())
                 }, json_file
             )
+
+
+            print('**' * 30, 'ENV', '**' * 30)
+            print(os.environ)
+            print('**' * 30, 'ENV', '**' * 30)
+            print('###' * 30, 'UPDATE JSON', '###' * 30)
+            print({
+                    'info': server_output, 'update_time': str(datetime.datetime.now())
+                }, json_file)
             print('###' * 30, 'UPDATE JSON', '###' * 30)
     except NameError as error:
         print(error)

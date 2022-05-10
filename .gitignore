@@ -2,3 +2,4 @@ test.py
 creds.py
 info.py
 deployment-test.yaml
+exporter_env

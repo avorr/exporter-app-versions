@@ -1,9 +1,11 @@
 #!/bin/bash
 
-#export PYTHONWARNINGS="ignore:Unverified HTTPS request"
+# Copy env to .bashrc
+env >> ~/.exporter_env
 
 # Run the first process
-/usr/local/bin/python3 /opt/versions-exporter.py &
+#/usr/local/bin/python3 /opt/versions-exporter.py &
+/opt/versions-exporter.py &
 
 # Run the second process
 cron && tail -f /var/log/cron.log &

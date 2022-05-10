@@ -18,6 +18,14 @@ RUN set -ex && \
                   libpython3.9  && \
     rm -rf /var/lib/apt/lists/*
 
+#RUN set -ex && \
+#    apt-get update && \
+#    apt-get -y install curl \
+#                       iputils-ping \
+#                       telnet  \
+#                       vim && \
+#    rm -rf /var/lib/apt/lists/*
+
 RUN set -ex && \
     pip3 install --no-cache --upgrade \
                               flask \
