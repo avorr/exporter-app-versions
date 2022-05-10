@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+  namespace: slurm
+data:
+  PORTAL_URL_PD15: "https://portal.gos.sbercloud.dev/api/v1/"
+  OS_METRICS_PD15: "'http://p-infra-nginx-internal.common.novalocal:8481/select/1/prometheus/api/v1/query?query=sum%20(kube_resourcequota)%20by%20(monitor%2C%20namespace%2C%20cluster%2C%20resource%2C%20type)'"
+#  enemies: aliens
+#  how: fairlyNice
+#  lives: "3"
+#  textmode: "true"
