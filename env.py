@@ -4,8 +4,12 @@ import os
 
 # from creds import *
 
-ssh_login: str = os.environ['SSH_LOGIN']
-ssh_pass: str = os.environ['SSH_PASS']
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="/root/.exporter_env")
+
+ssh_login: str = os.getenv('SSH_LOGIN')
+ssh_pass: str = os.getenv('SSH_PASS')
 
 env: dict = {
     url: os.environ[url] for url in os.environ if 'PORTAL_' in url or 'OS_METRICS_' in url

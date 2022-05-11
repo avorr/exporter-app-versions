@@ -1,10 +1,9 @@
 .git
 .gitignore
 __init__.py
-info.py
-test.py
+unuse
 .idea
 __pycache__
 k8s-deploy
 creds.py
-exporter_env
+.env_exporter

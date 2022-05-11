@@ -1,5 +1,4 @@
-test.py
+unuse
 creds.py
-info.py
 deployment-test.yaml
-exporter_env
+.env_exporter

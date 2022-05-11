@@ -31,7 +31,8 @@ RUN set -ex && \
                               flask \
                               loguru \
                               requests \
-                              paramiko
+                              paramiko \
+                              python-dotenv
 
 # Copy update-json file to the cron.d directory
 COPY update-json-cron /etc/cron.d/update-json
