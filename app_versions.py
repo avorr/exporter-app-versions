@@ -59,11 +59,11 @@ def get_app_versions(portal_name: str) -> list:
 
     cloud_projects: dict = portal_api("projects")
 
-    # for i in cloud_projects['stdout']['projects']:
-    #     if i['name'] == 'gt-dvp-dev-admin':
-    # if i['name'] == 'gt-dvp-dev-platform':
-    # print(i)
-    # cloud_projects['stdout']['projects'] = [i]
+    for i in cloud_projects['stdout']['projects']:
+        # if i['name'] == 'gt-dvp-dev-admin':
+        if i['name'] == 'gt-foms-dev-platform':
+            print(i)
+            cloud_projects['stdout']['projects'] = [i]
 
     def check_port(checked_host: str) -> bool:
         """
@@ -147,24 +147,24 @@ def get_app_versions(portal_name: str) -> list:
             return data.decode("ascii")
 
         except paramiko.ssh_exception.NoValidConnectionsError as error:
-            print(f"Failed to connect to host '{vm_ip}' with error: {error}")
+            print(f"Failed connect to  '{vm_ip}' with error: {error}")
             return {
-                "ERROR": f"Failed to connect to host '{vm_ip}' with error: {error}"
+                "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except paramiko.ssh_exception.AuthenticationException as error:
             print(str(error), vm_ip)
             return {
-                "ERROR": f"Failed to connect to host '{vm_ip}' with error: {error}"
+                "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except paramiko.ssh_exception.SSHException as error:
             print(str(error), vm_ip)
             return {
-                "ERROR": f"Failed to connect to host '{vm_ip}' with error: {error}"
+                "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except EOFError as error:
             print(str(error), vm_ip)
             return {
-                "ERROR": f"Failed to connect to host '{vm_ip}' with error: {error}"
+                "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except (paramiko.SSHException, socket.error) as error:
             print(vm_ip, str(error))
@@ -278,9 +278,9 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for kafka_vm in all_kafka_vms:
+
                 shell_command: str = \
-                    "basename $(find /opt -user kafka -group kafka -path '*kafka/libs/kafka_*.jar' -print -quit -type f 2>/dev/null)"
-                # "basename $(find / -user kafka -group kafka -path '*kafka/libs*' -type d 2>/dev/null)/kafka_*[[:digit:]].jar"
+                    '''KAFKA_API=$(find /opt/Apache* -name 'kafka-broker-api-versions.sh' -type f 2>/dev/null); if [ -f "$KAFKA_API" ]; then $KAFKA_API --version; else echo "Kafka not found"; fi'''
 
                 kafka_version: str = remote_execute(shell_command, kafka_vm["ip"], ssh_login, ssh_pass)
 
@@ -297,7 +297,7 @@ def get_app_versions(portal_name: str) -> list:
                         "id": kafka_vm["id"],
                         "name": kafka_vm["name"],
                         "service_name": kafka_vm["service_name"],
-                        "version": kafka_version.strip()[6:-4]
+                        "version": kafka_version.strip()
                     }
                 )
     return info
@@ -305,36 +305,3 @@ def get_app_versions(portal_name: str) -> list:
 
 if __name__ == "__main__":
     get_app_versions(next(iter(portal_info)))
-
-    # ssh = paramiko.SSHClient()
-    # ssh.connect(server, username=username, password=password)
-    # ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd_to_execute)
-
-# def rsh(command: str, vm_ip: str, username: str, password: str, multitreading=False):
-#     try:
-#         # with paramiko.SSHClient() as ssh_client:
-#         # print(command)
-#         sshtransport = paramiko.Transport((vm_ip, 9022))
-#         sshtransport.connect(username=username, password=password)
-#         session = sshtransport.open_channel(kind="session")
-#         output = list()
-#         session.exec_command(str(command))
-#         while True:
-#             if session.recv_ready():
-#                 output.append(session.recv(3000).decode("ascii"))
-#             if session.recv_stderr_ready():
-#                 output.append(session.recv_stderr(3000).decode("ascii"))
-#             if session.exit_status_ready():
-#                 break
-#         if multitreading:
-#             return [vm_ip, "".join(output)]
-#         else:
-#             return output
-#     except paramiko.ssh_exception.AuthenticationException as e:
-#         print(str(e))
-#     except paramiko.ssh_exception.SSHException as e:
-#         print(str(e))
-#     except EOFError as e:
-#         print(str(e))
-#     session.close()
-#     sshtransport.close()

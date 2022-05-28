@@ -5,7 +5,6 @@ import json
 from flask import Flask
 from env import portal_info
 from threading import Thread
-
 from update_json import write_to_json
 
 app = Flask(__name__)
