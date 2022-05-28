@@ -1,5 +1,4 @@
 #!/usr/local/bin/python3
-import os
 import time
 import json
 import socket
@@ -47,7 +46,7 @@ def get_app_versions(portal_name: str) -> list:
 
     app_tags: dict = {
         tag["tag_name"]: tag["id"] for tag in filter(
-            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka"), app_tags
+            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite"), app_tags
         )
     }
 
@@ -61,7 +60,8 @@ def get_app_versions(portal_name: str) -> list:
 
     # for i in cloud_projects['stdout']['projects']:
         # if i['name'] == 'gt-dvp-dev-admin':
-        # if i['name'] == 'gt-foms-dev-platform':
+        # if i['name'] == 'gt-foms-dev-customer':
+        # if i['name'] == 'gt-solution-uat-alt-platform':
         #     print(i)
         #     cloud_projects['stdout']['projects'] = [i]
 
@@ -180,7 +180,6 @@ def get_app_versions(portal_name: str) -> list:
     info = list()
 
     for cloud_project in cloud_projects["stdout"]["projects"]:
-
         project_modules_info: dict = {
             "project_id": cloud_project["id"],
             "project_name": cloud_project["name"],
@@ -188,14 +187,14 @@ def get_app_versions(portal_name: str) -> list:
             "domain_name": cloud_domains[cloud_project["domain_id"]],
             "group_id": cloud_project["group_id"],
             "group_name": cloud_project["group_name"],
-            # "service_name": wildfly_vm["service_name"],
             "modules_version": list()
         }
 
         project_vms: dict = portal_api("servers?project_id=%s" % cloud_project["id"])["stdout"]
 
         if project_vms["servers"]:
-            all_wildfly_vms, all_postgres_vms, all_nginx_vms, all_kafka_vms = list(), list(), list(), list()
+            all_wildfly_vms, all_postgres_vms, all_nginx_vms, all_kafka_vms, all_ignite_vms = \
+                list(), list(), list(), list(), list()
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
                     if app_tags["wildfly"] in server["tag_ids"]:
@@ -206,6 +205,8 @@ def get_app_versions(portal_name: str) -> list:
                         all_nginx_vms.append(server)
                     if app_tags["kafka"] in server["tag_ids"]:
                         all_kafka_vms.append(server)
+                    if app_tags["ignite"] in server["tag_ids"]:
+                        all_ignite_vms.append(server)
 
             for wildfly_vm in all_wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
@@ -233,10 +234,11 @@ def get_app_versions(portal_name: str) -> list:
             for postgres_vm in all_postgres_vms:
                 if "etcd-" not in postgres_vm["service_name"]:
 
-                    shell_command: str = \
-                        "$(find /usr -user postgres -group postgres -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version"
+                    shell_command: str = "sudo $(sudo find /usr -user postgres -group postgres \
+                                         -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version"
 
                     pgsql_version: str = remote_execute(shell_command, postgres_vm["ip"], ssh_login, ssh_pass)
+                    print(pgsql_version)
 
                     if isinstance(pgsql_version, dict):
                         pgsql_version: str = pgsql_version["ERROR"]
@@ -278,11 +280,13 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for kafka_vm in all_kafka_vms:
-
                 shell_command: str = \
-                    '''KAFKA_API=$(find /opt/Apache* -name 'kafka-broker-api-versions.sh' -type f 2>/dev/null); if [ -f "$KAFKA_API" ]; then $KAFKA_API --version; else echo "Kafka not found"; fi'''
+                    "KAFKA_API=$(find /opt/Apache /KAFKA/kafkaabyss/ -name 'kafka-broker-api-versions.sh'\
+                     -type f 2>/dev/null | head -n 1);if [ -f $KAFKA_API ];\
+                     then $KAFKA_API --version; else echo Kafka not found; fi"
 
                 kafka_version: str = remote_execute(shell_command, kafka_vm["ip"], ssh_login, ssh_pass)
+                print(kafka_version)
 
                 if not kafka_version:
                     kafka_version: str = f"ERROR: Kafka binary not found on {kafka_vm['name']}, {kafka_vm['ip']}"
@@ -300,6 +304,31 @@ def get_app_versions(portal_name: str) -> list:
                         "version": kafka_version.strip()
                     }
                 )
+
+            for ignite_vm in all_ignite_vms:
+                shell_command: str = "IGNITE_API=/opt/ignite/server/bin/control.sh; if sudo test -f $IGNITE_API;\
+                then sudo $IGNITE_API --system-view nodes --illegal-access=warn 2>/dev/null | head -n 1;\
+                else echo Ignite not found; fi"
+
+                ignite_version: str = remote_execute(shell_command, ignite_vm["ip"], ssh_login, ssh_pass)
+
+                if not ignite_version:
+                    ignite_version: str = f"ERROR: Ignite not found on {ignite_vm['name']}, {ignite_vm['ip']}"
+
+                if isinstance(ignite_version, dict):
+                    ignite_version: str = ignite_version["ERROR"]
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "ignite",
+                        "ip": ignite_vm["ip"],
+                        "id": ignite_vm["id"],
+                        "name": ignite_vm["name"],
+                        "service_name": ignite_vm["service_name"],
+                        "version": ignite_version.strip()
+                    }
+                )
+
     return info
 
 
