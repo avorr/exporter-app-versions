@@ -238,7 +238,6 @@ def get_app_versions(portal_name: str) -> list:
                                          -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version"
 
                     pgsql_version: str = remote_execute(shell_command, postgres_vm["ip"], ssh_login, ssh_pass)
-                    print(pgsql_version)
 
                     if isinstance(pgsql_version, dict):
                         pgsql_version: str = pgsql_version["ERROR"]
@@ -286,7 +285,6 @@ def get_app_versions(portal_name: str) -> list:
                      then $KAFKA_API --version; else echo Kafka not found; fi"
 
                 kafka_version: str = remote_execute(shell_command, kafka_vm["ip"], ssh_login, ssh_pass)
-                print(kafka_version)
 
                 if not kafka_version:
                     kafka_version: str = f"ERROR: Kafka binary not found on {kafka_vm['name']}, {kafka_vm['ip']}"
