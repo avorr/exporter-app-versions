@@ -1,54 +1,33 @@
-#!/usr/bin/python3
+#!/usr/local/bin/python3
 
 import os
 import json
-import time
-import datetime
 from flask import Flask
-from threading import Thread
-
-from modulesVersion import getPprb3Versions
 from env import portal_info
+from threading import Thread
+from update_json import write_to_json
 
 app = Flask(__name__)
 
-json_path: str = '/opt/pprb3-versions.json'
-# json_path: str = 'pprb3-versions.json'
+json_path: str = '/opt/app-versions.json'
 host: str = '0.0.0.0'
-# host: str = 'localhost'
 
 
-def write_to_json():
+def run_web_server() -> None:
     """
-    Func to write info to json
-    :return:
-    """
-    while True:
-        try:
-            server_output = getPprb3Versions(next(iter(portal_info)))
-            with open(json_path, 'w') as json_file:
-                json.dump({'info': server_output, 'update_time': str(datetime.datetime.now())}, json_file)
-                print('###' * 30, 'UPDATE JSON', '###' * 30)
-            time.sleep(3600)
-        except NameError as error:
-            print(error)
-
-
-def run_web_server():
-    """
-    func to run flask web server
+    Func to run flask web server
     :return: None
     """
     app.run(host=host, port=5002)
 
 
-@app.route("/versions", methods=['GET'])
+@app.route("/versions-%s" % next(iter(portal_info)).lower(), methods=['GET'])
 def summary() -> dict:
     with open(json_path) as json_file:
         while os.path.getsize(json_path) != 0:
             return json.load(json_file)
 
 
-if __name__ == "__main__":
+if __name__ in ("__main__", "exporter-apps-versions.versions-exporter"):
     Thread(target=run_web_server).start()
     Thread(target=write_to_json).start()
