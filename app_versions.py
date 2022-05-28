@@ -59,11 +59,11 @@ def get_app_versions(portal_name: str) -> list:
 
     cloud_projects: dict = portal_api("projects")
 
-    for i in cloud_projects['stdout']['projects']:
+    # for i in cloud_projects['stdout']['projects']:
         # if i['name'] == 'gt-dvp-dev-admin':
-        if i['name'] == 'gt-foms-dev-platform':
-            print(i)
-            cloud_projects['stdout']['projects'] = [i]
+        # if i['name'] == 'gt-foms-dev-platform':
+        #     print(i)
+        #     cloud_projects['stdout']['projects'] = [i]
 
     def check_port(checked_host: str) -> bool:
         """
