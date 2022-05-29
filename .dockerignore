@@ -5,5 +5,5 @@ unuse
 .idea
 __pycache__
 k8s-deploy
-creds.py
+#creds.py
 .env_exporter
