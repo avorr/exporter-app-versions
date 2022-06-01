@@ -59,11 +59,11 @@ def get_app_versions(portal_name: str) -> list:
     cloud_projects: dict = portal_api("projects")
 
     # for i in cloud_projects['stdout']['projects']:
-        # if i['name'] == 'gt-dvp-dev-admin':
-        # if i['name'] == 'gt-foms-dev-customer':
-        # if i['name'] == 'gt-solution-uat-alt-platform':
-        #     print(i)
-        #     cloud_projects['stdout']['projects'] = [i]
+    # if i['name'] == 'gt-dvp-dev-admin':
+    # if i['name'] == 'gt-foms-dev-customer':
+    # if i['name'] == 'gt-solution-uat-alt-platform':
+    #     print(i)
+    #     cloud_projects['stdout']['projects'] = [i]
 
     def check_port(checked_host: str) -> bool:
         """
@@ -234,8 +234,15 @@ def get_app_versions(portal_name: str) -> list:
             for postgres_vm in all_postgres_vms:
                 if "etcd-" not in postgres_vm["service_name"]:
 
-                    shell_command: str = "sudo $(sudo find /usr -user postgres -group postgres \
-                                         -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version"
+                    # 181
+                    # shell_command: str = "sudo $(sudo find /usr -user postgres -group postgres \
+                    #                      -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version | grep ^psql"
+
+                    # shell_command = "sudo su -c 'psql --version 2>/dev/null' -s /bin/bash postgres | head -n 1"
+                    # shell_command = "sudo su postgres -c 'source ~/.bash_profile; psql --version 2>/dev/null'"
+
+                    # 181
+                    shell_command = "sudo su - postgres -c 'psql --version 2>/dev/null' | grep ^psql"
 
                     pgsql_version: str = remote_execute(shell_command, postgres_vm["ip"], ssh_login, ssh_pass)
 
