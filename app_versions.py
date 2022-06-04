@@ -1,5 +1,5 @@
 #!/usr/local/bin/python3
-import os
+
 import time
 import json
 import socket
@@ -9,6 +9,10 @@ from requests.auth import HTTPDigestAuth
 
 from env import portal_info
 from env import ssh_login, ssh_pass
+
+
+# foo = {'hash': 'a4ebd3d70bafb8012e9c0fb2c8689c85164bbc57', 'release': 'R20.1.1', 'subsystem': 'SGW', 'buildVersion': 'D-04.001.00-24_release_20_1_1_sgw_rhel7.x86_64'}
+# sgw_version = '\n'.join(('Release=%s' % foo['release'], 'Version=%s' % foo['buildVersion']))
 
 
 def json_read(json_object: dict) -> None:
@@ -44,14 +48,16 @@ def get_app_versions(portal_name: str) -> list:
         return dict(stdout=json.loads(response.content), status_code=response.status_code)
 
     app_tags: list = portal_api("dict/tags")["stdout"]["tags"]
+    # from app_tags import app_tags
 
     app_tags: dict = {
         tag["tag_name"]: tag["id"] for tag in filter(
-            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite", "hadoop"), app_tags
+            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite", "hadoop", "sgw"), app_tags
         )
     }
 
     cloud_domains: dict = portal_api("domains")
+    # from cloud_domains import cloud_domains
 
     cloud_domains: dict = {
         key["id"]: key["name"] for key in cloud_domains["stdout"]["domains"]
@@ -59,14 +65,30 @@ def get_app_versions(portal_name: str) -> list:
 
     cloud_projects: dict = portal_api("projects")
 
-    # for i in cloud_projects['stdout']['projects']:
-    #     if i['name'] == 'gt-dvp-dev-admin':
-    #     if i['name'] == 'gt-foms-dev-customer':
-    #     if i['name'] == 'gt-solution-uat-alt-platform':
-    #     if i['name'] == 'gt-mintrud-test-platform':
-    #         cloud_projects['stdout']['projects'] = [i]
+    # from cloud_projects import cloud_projects
 
-    def check_port(checked_host: str) -> bool:
+    def vdc_filter(vdc_projects: list) -> list:
+        filtered_info = list()
+        for vdc in vdc_projects:
+            if vdc['name'] in (
+                    "gt-solution-uat-alt-platform",
+                    "gt-mintrud-test-platform",
+                    "gt-business-test-platform",
+                    "gt-business-dev-platform",
+                    "gt-bootcamp-test",
+                    "gt-rosim-test-platform",
+                    "gt-rosim-dev-platform",
+                    "gt-minsport-test-platform",
+                    "gt-minsport-dev-platform",
+                    "gt-foms-test-platform",
+                    "gt-foms-dev-platform"
+            ):
+                filtered_info.append(vdc)
+        return filtered_info
+
+    # cloud_projects['stdout']['projects'] = vdc_filter(cloud_projects['stdout']['projects'])
+
+    def check_port(checked_host: str, port: int) -> bool:
         """
         function to check server's port availability
         :param checked_host:
@@ -76,7 +98,7 @@ def get_app_versions(portal_name: str) -> list:
             return False
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
-            return s.connect_ex((checked_host, 9990)) == 0
+            return s.connect_ex((checked_host, port)) == 0
 
     def get_wf_info(host: str) -> dict:
         """
@@ -94,7 +116,7 @@ def get_app_versions(portal_name: str) -> list:
             "name": "enabled", "json.pretty": 1
         }
 
-        if check_port(host):
+        if check_port(host, 9990):
             try:
                 response = requests.get("http://%s:9990/management" % host, auth=HTTPDigestAuth("admin", "admin"),
                                         headers=headers, data=json.dumps(payload), timeout=5)
@@ -181,6 +203,11 @@ def get_app_versions(portal_name: str) -> list:
     info = list()
 
     for cloud_project in cloud_projects["stdout"]["projects"]:
+
+        # if cloud_project["name"] not in ("gt-bootcamp-test", "gt-minsport-dev-platform"):
+        #     continue
+        # print('#### Vdc Name' * 10, cloud_project["name"])
+
         project_modules_info: dict = {
             "project_id": cloud_project["id"],
             "project_name": cloud_project["name"],
@@ -194,29 +221,26 @@ def get_app_versions(portal_name: str) -> list:
         project_vms: dict = portal_api("servers?project_id=%s" % cloud_project["id"])["stdout"]
 
         if project_vms["servers"]:
-            all_wildfly_vms = list()
-            all_postgres_vms = list()
-            all_nginx_vms = list()
-            all_kafka_vms = list()
-            all_ignite_vms = list()
-            all_hadoop_vms = list()
+            wildfly_vms, postgres_vms, nginx_vms, kafka_vms, ignite_vms, hadoop_vms, sgw_vms = ([] for _ in range(7))
 
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
                     if app_tags["wildfly"] in server["tag_ids"]:
-                        all_wildfly_vms.append(server)
+                        wildfly_vms.append(server)
                     if app_tags["postgres"] in server["tag_ids"]:
-                        all_postgres_vms.append(server)
+                        postgres_vms.append(server)
                     if app_tags["iam"] in server["tag_ids"]:
-                        all_nginx_vms.append(server)
+                        nginx_vms.append(server)
                     if app_tags["kafka"] in server["tag_ids"]:
-                        all_kafka_vms.append(server)
+                        kafka_vms.append(server)
                     if app_tags["ignite"] in server["tag_ids"]:
-                        all_ignite_vms.append(server)
+                        ignite_vms.append(server)
                     if app_tags["hadoop"] in server["tag_ids"]:
-                        all_hadoop_vms.append(server)
+                        hadoop_vms.append(server)
+                    if app_tags["sgw"] in server["tag_ids"]:
+                        sgw_vms.append(server)
 
-            for wildfly_vm in all_wildfly_vms:
+            for wildfly_vm in wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
                 if next(iter(wf_info_tmp)) != "ERROR":
                     wf_info_tmp: dict = {
@@ -239,7 +263,7 @@ def get_app_versions(portal_name: str) -> list:
 
             info.append(project_modules_info)
 
-            for postgres_vm in all_postgres_vms:
+            for postgres_vm in postgres_vms:
                 if "etcd-" not in postgres_vm["service_name"]:
 
                     # 181
@@ -271,7 +295,7 @@ def get_app_versions(portal_name: str) -> list:
                         }
                     )
 
-            for nginx_vm in all_nginx_vms:
+            for nginx_vm in nginx_vms:
                 shell_command: str = \
                     "test -f /usr/local/openresty/nginx/sbin/nginx && /usr/local/openresty/nginx/sbin/nginx -v"
                 nginx_version: str = remote_execute(shell_command, nginx_vm["ip"], ssh_login, ssh_pass)
@@ -293,7 +317,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for kafka_vm in all_kafka_vms:
+            for kafka_vm in kafka_vms:
                 shell_command: str = \
                     "KAFKA_API=$(find /opt/Apache /KAFKA/kafkaabyss/ -name 'kafka-broker-api-versions.sh'\
                      -type f 2>/dev/null | head -n 1);if [ -f $KAFKA_API ];\
@@ -318,7 +342,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for ignite_vm in all_ignite_vms:
+            for ignite_vm in ignite_vms:
                 shell_command: str = "IGNITE_API=/opt/ignite/server/bin/control.sh; if sudo test -f $IGNITE_API;\
                 then sudo $IGNITE_API --system-view nodes --illegal-access=warn 2>/dev/null | head -n 1;\
                 else echo Ignite not found; fi"
@@ -342,7 +366,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for hadoop_vm in all_hadoop_vms:
+            for hadoop_vm in hadoop_vms:
                 shell_command: str = "hadoop version | head -n1"
 
                 hadoop_version: str = remote_execute(shell_command, hadoop_vm["ip"], ssh_login, ssh_pass)
@@ -361,6 +385,31 @@ def get_app_versions(portal_name: str) -> list:
                         "name": hadoop_vm["name"],
                         "service_name": hadoop_vm["service_name"],
                         "version": hadoop_version.rstrip()
+                    }
+                )
+
+            for sgw_vm in sgw_vms:
+
+                if check_port(sgw_vm["ip"], 9080):
+
+                    response = requests.get("http://%s:9080/environment/product" % sgw_vm["ip"])
+
+                    if response.status_code == 200:
+                        sgw_version: str = json.loads(response.content)["buildVersion"]
+                    else:
+                        sgw_version: str = "SGW version not found, Response status code = %s" % response.status_code
+
+                else:
+                    sgw_version: str = "SGW is unreachable on port 9080"
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "sgw",
+                        "ip": sgw_vm["ip"],
+                        "id": sgw_vm["id"],
+                        "name": sgw_vm["name"],
+                        "service_name": sgw_vm["service_name"],
+                        "version": sgw_version
                     }
                 )
 
