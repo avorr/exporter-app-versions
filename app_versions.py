@@ -52,7 +52,8 @@ def get_app_versions(portal_name: str) -> list:
 
     app_tags: dict = {
         tag["tag_name"]: tag["id"] for tag in filter(
-            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite", "hadoop", "sgw"), app_tags
+            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite", "hadoop", "sgw", "iag"),
+            app_tags
         )
     }
 
@@ -64,7 +65,6 @@ def get_app_versions(portal_name: str) -> list:
     }
 
     cloud_projects: dict = portal_api("projects")
-
     # from cloud_projects import cloud_projects
 
     def vdc_filter(vdc_projects: list) -> list:
@@ -206,7 +206,8 @@ def get_app_versions(portal_name: str) -> list:
 
         # if cloud_project["name"] not in ("gt-bootcamp-test", "gt-minsport-dev-platform"):
         #     continue
-        # print('#### Vdc Name' * 10, cloud_project["name"])
+
+        print('#### VDC name %s' % cloud_project["name"])
 
         project_modules_info: dict = {
             "project_id": cloud_project["id"],
@@ -221,7 +222,8 @@ def get_app_versions(portal_name: str) -> list:
         project_vms: dict = portal_api("servers?project_id=%s" % cloud_project["id"])["stdout"]
 
         if project_vms["servers"]:
-            wildfly_vms, postgres_vms, nginx_vms, kafka_vms, ignite_vms, hadoop_vms, sgw_vms = ([] for _ in range(7))
+            wildfly_vms, postgres_vms, nginx_vms, kafka_vms, ignite_vms, hadoop_vms, sgw_vms, iag_vms = \
+                ([] for _ in range(8))
 
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
@@ -239,6 +241,8 @@ def get_app_versions(portal_name: str) -> list:
                         hadoop_vms.append(server)
                     if app_tags["sgw"] in server["tag_ids"]:
                         sgw_vms.append(server)
+                    if app_tags["iag"] in server["tag_ids"]:
+                        iag_vms.append(server)
 
             for wildfly_vm in wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
@@ -284,6 +288,11 @@ def get_app_versions(portal_name: str) -> list:
                     if not pgsql_version:
                         pgsql_version: str = \
                             f"ERROR: Psql binary not found on {postgres_vm['name']}, {postgres_vm['ip']}"
+
+                    print(pgsql_version)
+                    print(postgres_vm['ip'])
+                    print('###' * 10)
+
                     project_modules_info["modules_version"].append(
                         {
                             "tag": "postgres",
@@ -305,6 +314,10 @@ def get_app_versions(portal_name: str) -> list:
 
                 if isinstance(nginx_version, dict):
                     nginx_version: str = nginx_version["ERROR"]
+
+                print(nginx_version)
+                print(nginx_vm['ip'])
+                print('###' * 10)
 
                 project_modules_info["modules_version"].append(
                     {
@@ -331,6 +344,10 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(kafka_version, dict):
                     kafka_version: str = kafka_version["ERROR"]
 
+                print(kafka_version)
+                print(kafka_vm['ip'])
+                print('###' * 10)
+
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "kafka",
@@ -355,6 +372,10 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(ignite_version, dict):
                     ignite_version: str = ignite_version["ERROR"]
 
+                print(ignite_version)
+                print(ignite_vm['ip'])
+                print('###' * 10)
+
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "ignite",
@@ -368,7 +389,6 @@ def get_app_versions(portal_name: str) -> list:
 
             for hadoop_vm in hadoop_vms:
                 shell_command: str = "hadoop version | head -n1"
-
                 hadoop_version: str = remote_execute(shell_command, hadoop_vm["ip"], ssh_login, ssh_pass)
 
                 if not hadoop_version:
@@ -376,6 +396,10 @@ def get_app_versions(portal_name: str) -> list:
 
                 if isinstance(hadoop_version, dict):
                     hadoop_version: str = hadoop_version["ERROR"]
+
+                print(hadoop_version)
+                print(hadoop_vm['ip'])
+                print('###' * 10)
 
                 project_modules_info["modules_version"].append(
                     {
@@ -389,9 +413,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for sgw_vm in sgw_vms:
-
                 if check_port(sgw_vm["ip"], 9080):
-
                     response = requests.get("http://%s:9080/environment/product" % sgw_vm["ip"])
 
                     if response.status_code == 200:
@@ -401,6 +423,10 @@ def get_app_versions(portal_name: str) -> list:
 
                 else:
                     sgw_version: str = "SGW is unreachable on port 9080"
+
+                print(sgw_version)
+                print(sgw_vm['ip'])
+                print('###' * 10)
 
                 project_modules_info["modules_version"].append(
                     {
@@ -413,6 +439,32 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
+            for iag_vm in iag_vms:
+                if check_port(iag_vm["ip"], 9080):
+                    response = requests.get("http://%s:9080/product" % iag_vm["ip"])
+                    if response.status_code == 200:
+                        sgw_version: str = json.loads(response.content)["buildVersion"]
+                    else:
+                        sgw_version: str = "IAG version not found, Response status code = %s" % response.status_code
+                else:
+                    sgw_version: str = "IAG is unreachable on port 9080"
+
+                print(sgw_version)
+                print(sgw_vm['ip'])
+                print('###' * 10)
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "iag",
+                        "ip": iag_vm["ip"],
+                        "id": iag_vm["id"],
+                        "name": iag_vm["name"],
+                        "service_name": iag_vm["service_name"],
+                        "version": sgw_version
+                    }
+                )
+
+    write_to_file(f'{info=}')
     return info
 
 
