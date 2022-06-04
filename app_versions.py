@@ -1,4 +1,5 @@
 #!/usr/local/bin/python3
+import os
 import time
 import json
 import socket
@@ -46,7 +47,7 @@ def get_app_versions(portal_name: str) -> list:
 
     app_tags: dict = {
         tag["tag_name"]: tag["id"] for tag in filter(
-            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite"), app_tags
+            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite", "hadoop"), app_tags
         )
     }
 
@@ -59,11 +60,11 @@ def get_app_versions(portal_name: str) -> list:
     cloud_projects: dict = portal_api("projects")
 
     # for i in cloud_projects['stdout']['projects']:
-    # if i['name'] == 'gt-dvp-dev-admin':
-    # if i['name'] == 'gt-foms-dev-customer':
-    # if i['name'] == 'gt-solution-uat-alt-platform':
-    #     print(i)
-    #     cloud_projects['stdout']['projects'] = [i]
+    #     if i['name'] == 'gt-dvp-dev-admin':
+    #     if i['name'] == 'gt-foms-dev-customer':
+    #     if i['name'] == 'gt-solution-uat-alt-platform':
+    #     if i['name'] == 'gt-mintrud-test-platform':
+    #         cloud_projects['stdout']['projects'] = [i]
 
     def check_port(checked_host: str) -> bool:
         """
@@ -193,8 +194,13 @@ def get_app_versions(portal_name: str) -> list:
         project_vms: dict = portal_api("servers?project_id=%s" % cloud_project["id"])["stdout"]
 
         if project_vms["servers"]:
-            all_wildfly_vms, all_postgres_vms, all_nginx_vms, all_kafka_vms, all_ignite_vms = \
-                list(), list(), list(), list(), list()
+            all_wildfly_vms = list()
+            all_postgres_vms = list()
+            all_nginx_vms = list()
+            all_kafka_vms = list()
+            all_ignite_vms = list()
+            all_hadoop_vms = list()
+
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
                     if app_tags["wildfly"] in server["tag_ids"]:
@@ -207,6 +213,8 @@ def get_app_versions(portal_name: str) -> list:
                         all_kafka_vms.append(server)
                     if app_tags["ignite"] in server["tag_ids"]:
                         all_ignite_vms.append(server)
+                    if app_tags["hadoop"] in server["tag_ids"]:
+                        all_hadoop_vms.append(server)
 
             for wildfly_vm in all_wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
@@ -331,6 +339,28 @@ def get_app_versions(portal_name: str) -> list:
                         "name": ignite_vm["name"],
                         "service_name": ignite_vm["service_name"],
                         "version": ignite_version.strip()
+                    }
+                )
+
+            for hadoop_vm in all_hadoop_vms:
+                shell_command: str = "hadoop version | head -n1"
+
+                hadoop_version: str = remote_execute(shell_command, hadoop_vm["ip"], ssh_login, ssh_pass)
+
+                if not hadoop_version:
+                    hadoop_version: str = f"ERROR: Hadoop not found on {hadoop_vm['name']}, {hadoop_vm['ip']}"
+
+                if isinstance(hadoop_version, dict):
+                    hadoop_version: str = hadoop_version["ERROR"]
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "hadoop",
+                        "ip": hadoop_vm["ip"],
+                        "id": hadoop_vm["id"],
+                        "name": hadoop_vm["name"],
+                        "service_name": hadoop_vm["service_name"],
+                        "version": hadoop_version.rstrip()
                     }
                 )
 
