@@ -7,3 +7,4 @@ __pycache__
 k8s-deploy
 creds.py
 .env_exporter
+requirements.txt

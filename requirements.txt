@@ -1,0 +1,5 @@
+flask
+loguru
+requests
+paramiko
+python-dotenv
