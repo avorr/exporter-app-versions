@@ -2,11 +2,11 @@
 
 import os
 
-# from creds import *
+from creds import *
 
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
-load_dotenv(dotenv_path="/root/.exporter_env")
+# load_dotenv(dotenv_path="/root/.exporter_env")
 
 ssh_login: str = os.getenv('SSH_LOGIN')
 ssh_pass: str = os.getenv('SSH_PASS')

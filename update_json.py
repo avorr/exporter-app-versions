@@ -25,10 +25,6 @@ def write_to_json() -> None:
                 }, json_file
             )
 
-
-            print('**' * 30, 'ENV', '**' * 30)
-            print(os.environ)
-            print('**' * 30, 'ENV', '**' * 30)
             print('###' * 30, 'UPDATE JSON', '###' * 30)
             print({
                     'info': server_output, 'update_time': str(datetime.datetime.now())

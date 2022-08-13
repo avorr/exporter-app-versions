@@ -10,7 +10,7 @@ import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
 with warnings.catch_warnings():
-    warnings.filterwarnings('ignore', category=CryptographyDeprecationWarning)
+    warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
     import paramiko
 
 from env import portal_info
@@ -56,8 +56,9 @@ def get_app_versions(portal_name: str) -> list:
 
     app_tags: dict = {
         tag["tag_name"]: tag["id"] for tag in filter(
-            lambda x: x["tag_name"] in ("wildfly", "postgres", "iam", "kafka", "ignite", "hadoop", "sgw", "iag"),
-            app_tags
+            lambda x: x["tag_name"] in
+                      ("wildfly", "postgres", "nginx", "kafka", "ignite",
+                       "hadoop", "sgw", "iag", "etcd", "zookeeper", "victoria", "keycloak"), app_tags
         )
     }
 
@@ -73,22 +74,23 @@ def get_app_versions(portal_name: str) -> list:
         filtered_info = list()
         for vdc in vdc_projects:
             if vdc['name'] in (
-                    "gt-solution-uat-alt-platform",
-                    "gt-mintrud-test-platform",
+                    # "gt-solution-uat-alt-platform",
+                    # "gt-mintrud-test-platform",
                     "gt-business-test-platform",
-                    "gt-business-dev-platform",
-                    "gt-bootcamp-test",
-                    "gt-rosim-test-platform",
-                    "gt-rosim-dev-platform",
-                    "gt-minsport-test-platform",
-                    "gt-minsport-dev-platform",
-                    "gt-foms-test-platform",
-                    "gt-foms-dev-platform"
+                    # "gt-business-dev-platform",
+                    # "gt-bootcamp-test",
+                    # "gt-rosim-test-platform",
+                    # "gt-rosim-dev-platform",
+                    # "gt-minsport-test-platform",
+                    # "gt-minsport-dev-platform",
+                    # "gt-foms-test-platform",
+                    # "gt-foms-dev-platform",
+                    # "gt-foms-prod-platform"
             ):
                 filtered_info.append(vdc)
         return filtered_info
 
-    # cloud_projects['stdout']['projects'] = vdc_filter(cloud_projects['stdout']['projects'])
+    # cloud_projects["stdout"]["projects"] = vdc_filter(cloud_projects["stdout"]["projects"])
 
     def check_port(checked_host: str, port: int) -> bool:
         """
@@ -217,14 +219,15 @@ def get_app_versions(portal_name: str) -> list:
             "domain_name": cloud_domains[cloud_project["domain_id"]],
             "group_id": cloud_project["group_id"],
             "group_name": cloud_project["group_name"],
+            "desc": cloud_project["desc"] if "desc" in cloud_project else "",
             "modules_version": list()
         }
 
         project_vms: dict = portal_api("servers?project_id=%s" % cloud_project["id"])["stdout"]
 
         if project_vms["servers"]:
-            wildfly_vms, postgres_vms, nginx_vms, kafka_vms, ignite_vms, hadoop_vms, sgw_vms, iag_vms = \
-                ([] for _ in range(8))
+            wildfly_vms, postgres_vms, nginx_vms, kafka_vms, ignite_vms, hadoop_vms, sgw_vms, iag_vms, \
+            etcd_vms, zookeeper_vms, victoria_vms, keycloak_vms = ([] for _ in range(12))
 
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
@@ -232,7 +235,7 @@ def get_app_versions(portal_name: str) -> list:
                         wildfly_vms.append(server)
                     elif app_tags["postgres"] in server["tag_ids"]:
                         postgres_vms.append(server)
-                    elif app_tags["iam"] in server["tag_ids"]:
+                    elif app_tags["nginx"] in server["tag_ids"]:
                         nginx_vms.append(server)
                     elif app_tags["kafka"] in server["tag_ids"]:
                         kafka_vms.append(server)
@@ -244,6 +247,14 @@ def get_app_versions(portal_name: str) -> list:
                         sgw_vms.append(server)
                     elif app_tags["iag"] in server["tag_ids"]:
                         iag_vms.append(server)
+                    elif app_tags["etcd"] in server["tag_ids"]:
+                        etcd_vms.append(server)
+                    elif app_tags["zookeeper"] in server["tag_ids"]:
+                        zookeeper_vms.append(server)
+                    elif app_tags["victoria"] in server["tag_ids"]:
+                        victoria_vms.append(server)
+                    elif app_tags["keycloak"] in server["tag_ids"]:
+                        keycloak_vms.append(server)
 
             for wildfly_vm in wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
@@ -314,7 +325,7 @@ def get_app_versions(portal_name: str) -> list:
 
                 project_modules_info["modules_version"].append(
                     {
-                        "tag": "iam",
+                        "tag": "nginx",
                         "ip": nginx_vm["ip"],
                         "id": nginx_vm["id"],
                         "name": nginx_vm["name"],
@@ -437,11 +448,92 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
+            for etcd_vm in etcd_vms:
+                shell_command: str = "etcdctl --endpoints=127.0.0.1:2379 endpoint status"
+                etcd_version: str = remote_execute(shell_command, etcd_vm["ip"], ssh_login, ssh_pass)
+
+                if not etcd_version:
+                    etcd_version: str = f"ERROR: Etcd not found on {etcd_vm['name']}, {etcd_vm['ip']}"
+
+                if isinstance(etcd_version, dict):
+                    etcd_version: str = etcd_version["ERROR"]
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "etcd",
+                        "ip": etcd_vm["ip"],
+                        "id": etcd_vm["id"],
+                        "name": etcd_vm["name"],
+                        "service_name": etcd_vm["service_name"],
+                        "version": etcd_version.strip()
+                    }
+                )
+
+            for zookeeper_vm in zookeeper_vms:
+                shell_command: str = 'echo "status" | nc localhost 2181 | head -n 1'
+                zookeeper_version: str = remote_execute(shell_command, zookeeper_vm["ip"], ssh_login, ssh_pass)
+
+                if not zookeeper_version:
+                    zookeeper_version: str = f"ERROR: Zookeeper not found on {zookeeper_vm['name']}, {zookeeper_vm['ip']}"
+
+                if isinstance(zookeeper_version, dict):
+                    zookeeper_version: str = zookeeper_version["ERROR"]
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "zookeeper",
+                        "ip": zookeeper_vm["ip"],
+                        "id": zookeeper_vm["id"],
+                        "name": zookeeper_vm["name"],
+                        "service_name": zookeeper_vm["service_name"],
+                        "version": zookeeper_version.strip()
+                    }
+                )
+
+            for victoria_vm in victoria_vms:
+                shell_command: str = 'curl -silent http://localhost:8428/metrics | grep vm_app_version'
+                victoria_version: str = remote_execute(shell_command, victoria_vm["ip"], ssh_login, ssh_pass)
+
+                if not victoria_version:
+                    victoria_version: str = f"ERROR: Victoria not found on {victoria_vm['name']}, {victoria_vm['ip']}"
+
+                if isinstance(victoria_version, dict):
+                    victoria_version: str = victoria_version["ERROR"]
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "victoria",
+                        "ip": victoria_vm["ip"],
+                        "id": victoria_vm["id"],
+                        "name": victoria_vm["name"],
+                        "service_name": victoria_vm["service_name"],
+                        "version": victoria_version.strip()
+                    }
+                )
+
+            for keycloak_vm in keycloak_vms:
+                shell_command: str = 'cat /opt/keycloak/welcome-content/version.txt | grep version'
+                keycloak_version: str = remote_execute(shell_command, keycloak_vm["ip"], ssh_login, ssh_pass)
+
+                if not keycloak_version:
+                    keycloak_version: str = f"ERROR: Keycloak not found on {keycloak_vm['name']}, {keycloak_vm['ip']}"
+
+                if isinstance(keycloak_version, dict):
+                    keycloak_version: str = keycloak_version["ERROR"]
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "keycloak",
+                        "ip": keycloak_vm["ip"],
+                        "id": keycloak_vm["id"],
+                        "name": keycloak_vm["name"],
+                        "service_name": keycloak_vm["service_name"],
+                        "version": keycloak_version.strip()
+                    }
+                )
+
     return output_info
 
 
 if __name__ == "__main__":
     get_app_versions(next(iter(portal_info)))
-
-# foo = {'hash': 'a4ebd3d70bafb8012e9c0fb2c8689c85164bbc57', 'release': 'R20.1.1', 'subsystem': 'SGW', 'buildVersion': 'D-04.001.00-24_release_20_1_1_sgw_rhel7.x86_64'}
-# sgw_version = '\n'.join(('Release=%s' % foo['release'], 'Version=%s' % foo['buildVersion']))
