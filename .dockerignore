@@ -5,6 +5,14 @@ unuse
 .idea
 __pycache__
 k8s-deploy
-#creds.py
 .env_exporter
 requirements.txt
+dev.py
+
+
+
+creds.py
+#creds_pd15.py
+creds_pd20.py
+creds_pd23.py
+creds_pd24.py

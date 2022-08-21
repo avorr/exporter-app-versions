@@ -1,3 +1,5 @@
 unuse
 creds.py
+creds*.py
 .env_exporter
+dev.py

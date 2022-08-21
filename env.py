@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
-import os
-
-from creds import *
+from creds_pd15 import *
+# from creds_pd20 import *
+# from creds_pd23 import *
+# from creds_pd24 import *
 
 # from dotenv import load_dotenv
 
@@ -10,6 +11,8 @@ from creds import *
 
 ssh_login: str = os.getenv('SSH_LOGIN')
 ssh_pass: str = os.getenv('SSH_PASS')
+pm_login: str = os.getenv('PM_LOGIN')
+pm_pass: str = os.getenv('PM_PASS')
 
 env: dict = {
     url: os.environ[url] for url in os.environ if 'PORTAL_' in url or 'OS_METRICS_' in url
