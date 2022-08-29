@@ -2,7 +2,7 @@
 
 import json
 import datetime
-import os
+from loguru import logger
 
 from app_versions import get_app_versions
 from env import portal_info
@@ -25,13 +25,10 @@ def write_to_json() -> None:
                 }, json_file
             )
 
-            print('###' * 30, 'UPDATE JSON', '###' * 30)
-            print({
-                    'info': server_output, 'update_time': str(datetime.datetime.now())
-                }, json_file)
-            print('###' * 30, 'UPDATE JSON', '###' * 30)
+            # print({'info': server_output, 'update_time': str(datetime.datetime.now())}, json_file)
+            logger.info('###' * 10, 'Update json %s' % json_path, '###' * 10)
     except NameError as error:
-        print(error)
+        logger.error(error)
 
 
 if __name__ == "__main__":

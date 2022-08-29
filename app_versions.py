@@ -1,11 +1,12 @@
 #!/usr/local/bin/python3
 
-import os
+import ssl
 import time
 import json
 import socket
 import requests
-from requests.auth import HTTPDigestAuth
+from loguru import logger
+from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 
 import warnings
 from cryptography.utils import CryptographyDeprecationWarning
@@ -54,6 +55,7 @@ def get_app_versions(portal_name: str) -> list:
         }
 
     app_tags: list = portal_api("dict/tags")["stdout"]["tags"]
+    logger.info("Get all portal tags")
 
     app_tags: dict = {
         tag["tag_name"]: tag["id"] for tag in filter(
@@ -61,17 +63,19 @@ def get_app_versions(portal_name: str) -> list:
                       ("wildfly", "postgres", "nginx", "kafka", "ignite",
                        "hadoop", "sgw", "iag", "etcd", "zookeeper", "victoria",
                        "keycloak", "elk", "jenkinsslave", "ipa", "ipareplica",
-                       "eskkd", "sds", "nifi", "datalab", "ambari"), app_tags
+                       "eskkd", "sds", "nifi", "datalab", "ambari", "synapse_flink"), app_tags
         )
     }
 
     cloud_domains: dict = portal_api("domains")
+    logger.info("Get all portal domains")
 
     cloud_domains: dict = {
         key["id"]: key["name"] for key in cloud_domains["stdout"]["domains"]
     }
 
     cloud_projects: dict = portal_api("projects")
+    logger.info("Get all portal projects")
 
     def vdc_filter(vdc_projects: list) -> list:
         filtered_info = list()
@@ -81,12 +85,15 @@ def get_app_versions(portal_name: str) -> list:
                     # "gt-rosim-nt-platform",
                     ### PD23
                     # "gt-minsport-prod-customer",
-                    "gt-common-admins",
-                    "gt-minsport-nt-platform",
-                    "gt-minsport-prod-platform",
-                    "gt-minsport-uat-platform",
+                    # "gt-common-admins",
+                    # "gt-minsport-nt-platform",
 
+                    # "gt-minsport-prod-platform",
 
+                    # "gt-minsport-uat-platform",
+
+                    ### PD15
+                    "gt-sberworks-uat",
                     # "gt-solution-uat-alt-platform",
                     # "gt-business-test-platform",
                     # "gt-solution-uat-platform",
@@ -112,7 +119,7 @@ def get_app_versions(portal_name: str) -> list:
                 filtered_info.append(vdc)
         return filtered_info
 
-    # cloud_projects["stdout"]["projects"] = vdc_filter(cloud_projects["stdout"]["projects"])
+    cloud_projects["stdout"]["projects"] = vdc_filter(cloud_projects["stdout"]["projects"])
 
     def check_port(checked_host: str, port: int) -> bool:
         """
@@ -125,6 +132,29 @@ def get_app_versions(portal_name: str) -> list:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
             return s.connect_ex((checked_host, port)) == 0
+
+    def check_resolves(dns_name: str) -> bool:
+        """
+        function for checking resolving dns names
+        :param dns_name:
+        :return: bool
+        """
+        try:
+            socket.gethostbyname(dns_name)
+            return True
+        except socket.error as Error:
+            print(dns_name, Error)
+            return False
+
+    def check_ssl(host: str, port: int) -> bool:
+        context = ssl.create_default_context()
+        try:
+            with socket.create_connection((host, port)) as sock:
+                with context.wrap_socket(sock, server_hostname=host) as ssock:
+                    print(ssock.version())
+                    return True
+        except:
+            return False
 
     def get_wf_info(host: str) -> dict:
         """
@@ -147,6 +177,7 @@ def get_app_versions(portal_name: str) -> list:
                 response = requests.get("http://%s:9990/management" % host, auth=HTTPDigestAuth("admin", "admin"),
                                         headers=headers, data=json.dumps(payload), timeout=5)
             except requests.exceptions.RequestException as error:
+                logger.error(host, str(error))
                 return {
                     "ERROR": str(error)
                 }
@@ -155,8 +186,15 @@ def get_app_versions(portal_name: str) -> list:
             if response.status_code == 200:
                 return json.loads(response.content)
             elif response.status_code == 401:
-                response = requests.get("http://%s:9990/management" % host, auth=HTTPDigestAuth("fly", "fly"),
-                                        headers=headers, data=json.dumps(payload))
+                try:
+                    response = requests.get("http://%s:9990/management" % host, auth=HTTPDigestAuth("fly", "fly"),
+                                            headers=headers, data=json.dumps(payload))
+                except requests.exceptions.RequestException as error:
+                    logger.error(host, str(error))
+                    return {
+                        "ERROR": str(error)
+                    }
+
                 if response.status_code == 200:
                     return json.loads(response.content)
                 else:
@@ -192,36 +230,35 @@ def get_app_versions(portal_name: str) -> list:
                 ssh_client.close()
             if multiprocess:
                 return [vm_ip, data.decode("ascii")]
-            # else:
             return data.decode("ascii")
 
         except paramiko.ssh_exception.NoValidConnectionsError as error:
-            print(f"Failed connect to  '{vm_ip}' with error: {error}")
+            logger.error(f"Failed connect to  '{vm_ip}' with error: {error}")
             return {
                 "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except paramiko.ssh_exception.AuthenticationException as error:
-            print(str(error), vm_ip)
+            logger.error(vm_ip, str(error))
             return {
                 "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except paramiko.ssh_exception.SSHException as error:
-            print(str(error), vm_ip)
+            logger.error(vm_ip, str(error))
             return {
                 "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except EOFError as error:
-            print(str(error), vm_ip)
+            logger.error(vm_ip, str(error))
             return {
                 "ERROR": f"Failed connect to '{vm_ip}' with error: {error}"
             }
         except (paramiko.SSHException, socket.error) as error:
-            print(vm_ip, str(error))
+            logger.error(vm_ip, str(error))
             return {
                 "ERROR": f"Connection {str(error)} to {vm_ip}"
             }
-        except:
-            print(vm_ip, "error")
+        except Exception as error:
+            logger.error(vm_ip, str(error))
             return {
                 "ERROR": "unknown connection error to %s" % vm_ip
             }
@@ -243,35 +280,10 @@ def get_app_versions(portal_name: str) -> list:
 
         project_vms: dict = portal_api("servers?project_id=%s" % cloud_project["id"])["stdout"]
 
-        def check_port(checked_host: str, port: int) -> bool:
-            """
-            function to check server's port availability
-            :param checked_host:
-            :return: bool
-            """
-            if not checked_host:
-                return False
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(3)
-                return s.connect_ex((checked_host, port)) == 0
-
-        def check_resolves(dns_name: str) -> bool:
-            """
-            function for checking resolving dns names
-            :param dns_name:
-            :return: bool
-            """
-            try:
-                socket.gethostbyname(dns_name)
-                return True
-            except socket.error as Error:
-                print(dns_name, Error)
-                return False
-
         if project_vms["servers"]:
             wildfly_vms, postgres_vms, nginx_vms, kafka_vms, ignite_vms, hadoop_vms, sgw_vms, iag_vms, \
             etcd_vms, zookeeper_vms, victoria_vms, keycloak_vms, elk_vms, jenkins_vms, ipa_vms, eskkd_vms, \
-            sds_vms, etl_vms, datalab_vms, ambari_vms = ([] for _ in range(20))
+            sds_vms, etl_vms, datalab_vms, ambari_vms, synapseflink_vms = ([] for _ in range(21))
 
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
@@ -317,6 +329,8 @@ def get_app_versions(portal_name: str) -> list:
                         datalab_vms.append(server)
                     elif app_tags["ambari"] in server["tag_ids"]:
                         ambari_vms.append(server)
+                    elif app_tags["synapse_flink"] in server["tag_ids"]:
+                        synapseflink_vms.append(server)
 
             for wildfly_vm in wildfly_vms:
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
@@ -328,6 +342,10 @@ def get_app_versions(portal_name: str) -> list:
                         "deployment": wf_info_tmp["deployment"],
                         "deployment-overlay": wf_info_tmp["deployment-overlay"]
                     }
+                    print(wf_info_tmp)
+                if next(iter(wf_info_tmp)) == "ERROR":
+                    wf_info_tmp = wf_info_tmp["ERROR"]
+
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "wildfly",
@@ -343,6 +361,8 @@ def get_app_versions(portal_name: str) -> list:
 
             for postgres_vm in postgres_vms:
                 if "etcd-" not in postgres_vm["service_name"]:
+
+                    logger.info(f"Get postgres version from {postgres_vm['ip']}")
 
                     # shell_command: str = "sudo $(sudo find /usr -user postgres -group postgres \
                     #                      -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version | grep ^psql"
@@ -361,6 +381,8 @@ def get_app_versions(portal_name: str) -> list:
                         pgsql_version: str = \
                             f"ERROR: Psql binary not found on {postgres_vm['name']}, {postgres_vm['ip']}"
 
+                    logger.info(f"Postgres version = {pgsql_version.strip()}")
+
                     project_modules_info["modules_version"].append(
                         {
                             "tag": "postgres",
@@ -373,6 +395,7 @@ def get_app_versions(portal_name: str) -> list:
                     )
 
             for nginx_vm in nginx_vms:
+                logger.info(f"Get nginx version from {nginx_vm['ip']}")
                 # shell_command: str = "test -f /usr/local/openresty/nginx/sbin/nginx && /usr/local/openresty/nginx/sbin/nginx -v"
                 shell_command: str = """sudo pidof -s nginx > /dev/null && $(sudo readlink -f /proc/$(sudo pidof -s nginx)/exe) -v"""
                 nginx_version: str = remote_execute(shell_command, nginx_vm["ip"], ssh_login, ssh_pass)
@@ -383,6 +406,7 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(nginx_version, dict):
                     nginx_version: str = nginx_version["ERROR"]
 
+                logger.info(f"Nginx version = {nginx_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "nginx",
@@ -395,6 +419,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for kafka_vm in kafka_vms:
+                logger.info(f"Get kafka version from {kafka_vm['ip']}")
                 shell_command: str = \
                     "KAFKA_API=$(find /opt/Apache /KAFKA/kafkaabyss/ /ditmsk/apps/kafka\
                      -name 'kafka-broker-api-versions.sh' -type f 2>/dev/null | head -n 1);if [ -f $KAFKA_API ];\
@@ -408,6 +433,7 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(kafka_version, dict):
                     kafka_version: str = kafka_version["ERROR"]
 
+                logger.info(f"Kafka version = {kafka_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "kafka",
@@ -420,6 +446,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for ignite_vm in ignite_vms:
+                logger.info(f"Get ignite version from {ignite_vm['ip']}")
                 shell_command: str = "IGNITE_API=/opt/ignite/server/bin/control.sh; if sudo test -f $IGNITE_API;\
                 then sudo $IGNITE_API --system-view nodes --illegal-access=warn 2>/dev/null | head -n 1;\
                 else echo Ignite not found; fi"
@@ -432,6 +459,7 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(ignite_version, dict):
                     ignite_version: str = ignite_version["ERROR"]
 
+                logger.info(f"Ignite version = {ignite_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "ignite",
@@ -444,6 +472,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for hadoop_vm in hadoop_vms:
+                logger.info(f"Get hadoop version from {hadoop_vm['ip']}")
                 shell_command: str = "hadoop version | head -n1"
                 hadoop_version: str = remote_execute(shell_command, hadoop_vm["ip"], ssh_login, ssh_pass)
 
@@ -452,7 +481,7 @@ def get_app_versions(portal_name: str) -> list:
 
                 if isinstance(hadoop_version, dict):
                     hadoop_version: str = hadoop_version["ERROR"]
-
+                logger.info(f"Hadoop version = {hadoop_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "hadoop",
@@ -465,17 +494,21 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for sgw_vm in sgw_vms:
+                logger.info(f"Get sgw version from {sgw_vm['ip']}")
                 if check_port(sgw_vm["ip"], 9080):
-                    response = requests.get("http://%s:9080/environment/product" % sgw_vm["ip"], timeout=5)
+                    try:
+                        response = requests.get("http://%s:9080/environment/product" % sgw_vm["ip"], timeout=5)
 
-                    if response.status_code == 200:
-                        sgw_version: str = json.loads(response.content)["buildVersion"]
-                    else:
-                        sgw_version: str = "Sgw version not found, response status code = %s" % response.status_code
-
+                        if response.status_code == 200:
+                            sgw_version: str = json.loads(response.content)["buildVersion"]
+                        else:
+                            sgw_version: str = "Sgw version not found, response status code = %s" % response.status_code
+                    except Exception as error:
+                        sgw_version = str(error)
                 else:
                     sgw_version: str = "Sgw is not available on port 9080"
 
+                logger.info(f"Sgw version = {sgw_version}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "sgw",
@@ -488,15 +521,19 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for iag_vm in iag_vms:
+                logger.info(f"Get iag version from {iag_vm['ip']}")
                 if check_port(iag_vm["ip"], 9080):
-                    response = requests.get("http://%s:9080/product" % iag_vm["ip"], timeout=5)
-                    if response.status_code == 200:
-                        sgw_version: str = json.loads(response.content)["buildVersion"]
-                    else:
-                        sgw_version: str = "Iag version not found, response status code = %s" % response.status_code
+                    try:
+                        response = requests.get("http://%s:9080/product" % iag_vm["ip"], timeout=5)
+                        if response.status_code == 200:
+                            iag_version: str = json.loads(response.content)["buildVersion"]
+                        else:
+                            iag_version: str = "Iag version not found, response status code = %s" % response.status_code
+                    except Exception as error:
+                        iag_version = str(error)
                 else:
-                    sgw_version: str = "Iag is not available on port 9080"
-
+                    iag_version: str = "Iag is not available on port 9080"
+                logger.info(f"Iag version = {iag_version}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "iag",
@@ -504,11 +541,12 @@ def get_app_versions(portal_name: str) -> list:
                         "id": iag_vm["id"],
                         "name": iag_vm["name"],
                         "service_name": iag_vm["service_name"],
-                        "version": sgw_version
+                        "version": iag_version
                     }
                 )
 
             for etcd_vm in etcd_vms:
+                logger.info(f"Get etcd version from {etcd_vm['ip']}")
                 shell_command: str = """etcdctl --endpoints=127.0.0.1:2379 endpoint status | awk -F ", " '{print $3}'"""
                 etcd_version: str = remote_execute(shell_command, etcd_vm["ip"], ssh_login, ssh_pass)
 
@@ -517,7 +555,7 @@ def get_app_versions(portal_name: str) -> list:
 
                 if isinstance(etcd_version, dict):
                     etcd_version: str = etcd_version["ERROR"]
-
+                logger.info(f"Etcd version = {etcd_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "etcd",
@@ -530,15 +568,16 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for zookeeper_vm in zookeeper_vms:
+                logger.info(f"Get zookeeper version from {zookeeper_vm['ip']}")
                 shell_command: str = 'echo "status" | nc localhost 2181 | head -n 1'
                 zookeeper_version: str = remote_execute(shell_command, zookeeper_vm["ip"], ssh_login, ssh_pass)
 
                 if not zookeeper_version:
-                    zookeeper_version: str = f"ERROR: Zookeeper not found on {zookeeper_vm['name']}, {zookeeper_vm['ip']}"
+                    zookeeper_version = f"ERROR: Zookeeper not found on {zookeeper_vm['name']}, {zookeeper_vm['ip']}"
 
                 if isinstance(zookeeper_version, dict):
                     zookeeper_version: str = zookeeper_version["ERROR"]
-
+                logger.info(f"Zookeeper version = {zookeeper_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "zookeeper",
@@ -551,6 +590,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for victoria_vm in victoria_vms:
+                logger.info(f"Get victoria version from {victoria_vm['ip']}")
                 shell_command: str = """curl -silent http://localhost:8428/metrics | grep vm_app_version | awk -F '"' '{print $4}'"""
                 victoria_version: str = remote_execute(shell_command, victoria_vm["ip"], ssh_login, ssh_pass)
 
@@ -560,6 +600,7 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(victoria_version, dict):
                     victoria_version: str = victoria_version["ERROR"]
 
+                logger.info(f"Victoria version = {victoria_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "victoria",
@@ -572,6 +613,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for keycloak_vm in keycloak_vms:
+                logger.info(f"Get keycloak version from {keycloak_vm['ip']}")
                 shell_command: str = 'cat /opt/keycloak/welcome-content/version.txt | grep version'
                 keycloak_version: str = remote_execute(shell_command, keycloak_vm["ip"], ssh_login, ssh_pass)
 
@@ -581,6 +623,7 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(keycloak_version, dict):
                     keycloak_version: str = keycloak_version["ERROR"]
 
+                logger.info(f"Keycloak version = {keycloak_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "keycloak",
@@ -593,16 +636,21 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for elk_vm in elk_vms:
+                logger.info(f"Get elk version from {['ip']}")
                 if check_port(elk_vm["ip"], 9200):
-                    response = requests.get("http://%s:9200/_nodes/_local/os" % elk_vm["ip"], timeout=5)
-
-                    if response.status_code == 200:
-                        elk_version: str = tuple(json.loads(response.content)["nodes"].values())[0]["version"]
-                    else:
-                        elk_version: str = "Elk version not found, response status code = %s" % response.status_code
+                    try:
+                        response = requests.get("https://%s:9200/_nodes/_local/os" % elk_vm["ip"], timeout=5,
+                                                verify=False, auth=HTTPBasicAuth(pm_login, pm_pass))
+                        if response.status_code == 200:
+                            elk_version: str = tuple(json.loads(response.content)["nodes"].values())[0]["version"]
+                        else:
+                            elk_version: str = "Elk version not found, response status code %s" % response.status_code
+                    except Exception as error:
+                        elk_version = str(error)
                 else:
                     elk_version: str = "Elk is not available on port 9200"
 
+                logger.info(f"Elk version = {elk_version}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "elk",
@@ -610,22 +658,29 @@ def get_app_versions(portal_name: str) -> list:
                         "id": elk_vm["id"],
                         "name": elk_vm["name"],
                         "service_name": elk_vm["service_name"],
-                        "version": elk_version.strip()
+                        "version": elk_version
                     }
                 )
 
             for jenkins_vm in jenkins_vms:
-
-                if check_port("sw.%s.gtp" % portal_name.lower(), 443):
-                    response = requests.head("https://sw.%s.gtp/jenkins-cd/api/" % portal_name.lower(), verify=False,
-                                             timeout=5)
-                    if response.status_code == 403:
-                        jenkins_version: str = response.headers["x-jenkins"]
+                logger.info(f"Get jenkins version from {jenkins_vm['ip']}")
+                if check_resolves("sw.%s.gtp" % portal_name.lower()):
+                    if check_port("sw.%s.gtp" % portal_name.lower(), 443):
+                        try:
+                            response = requests.head("https://sw.%s.gtp/jenkins-cd/api/" % portal_name.lower(),
+                                                     verify=False, timeout=5)
+                            if response.status_code == 403:
+                                jenkins_version: str = response.headers["x-jenkins"]
+                            else:
+                                jenkins_version: str = f"Jenkins version not found on https://sw.{portal_name.lower()}.gtp/jenkins-cd/api/, Response status code = %s" % response.status_code
+                        except Exception as error:
+                            jenkins_version = str(error)
                     else:
-                        jenkins_version: str = f"Jenkins version not found on https://sw.{portal_name.lower()}.gtp/jenkins-cd/api/, Response status code = %s" % response.status_code
+                        jenkins_version: str = f"Jenkins is not available on port https://sw.{portal_name.lower()}.gtp/jenkins-cd/api/"
                 else:
-                    jenkins_version: str = f"Jenkins is not available on port https://sw.{portal_name.lower()}.gtp/jenkins-cd/api/"
+                    jenkins_version: str = "sw.%s.gtp dns name does not resolve" % portal_name.lower()
 
+                logger.info(f"Jenkins version = {jenkins_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "jenkinsslave",
@@ -638,6 +693,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for ipa_vm in ipa_vms:
+                logger.info(f"Get ipa version from {ipa_vm['ip']}")
                 for server in project_vms["servers"]:
                     if server["tag_ids"] and app_tags["ipa"] not in server["tag_ids"] and app_tags["ipareplica"] not in \
                             server["tag_ids"]:
@@ -655,6 +711,7 @@ def get_app_versions(portal_name: str) -> list:
                                         print("CONTINUE")
                                         continue
 
+                                logger.info(f"Ipa version = {ipa_version.strip()}")
                                 project_modules_info["modules_version"].append(
                                     {
                                         "tag": "ipareplica",
@@ -668,6 +725,7 @@ def get_app_versions(portal_name: str) -> list:
                                 break
 
             for eskkd_vm in eskkd_vms:
+                logger.info(f"Get eskkd version from {eskkd_vm['ip']}")
                 shell_command: str = """cat /opt/eskkd/current/package.json | grep version | awk -F '"' '{print $4}' | head -n 1"""
                 eskkd_version: str = remote_execute(shell_command, eskkd_vm["ip"], ssh_login, ssh_pass)
 
@@ -676,7 +734,7 @@ def get_app_versions(portal_name: str) -> list:
 
                 if isinstance(eskkd_version, dict):
                     eskkd_version: str = eskkd_version["ERROR"]
-
+                logger.info(f"Eskkd version = {eskkd_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "eskkd",
@@ -689,17 +747,22 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for sds_vm in sds_vms:
+                logger.info(f"Get sds version from {sds_vm['ip']}")
                 if check_port(sds_vm["ip"], 9080):
-                    response = requests.get("http://%s:9080/ufs-session-master/rest/environment/product" % sds_vm["ip"],
-                                            timeout=5)
+                    try:
+                        response = requests.get("http://%s:9080/ufs-session-master/rest/environment/product" %
+                                                sds_vm["ip"], timeout=5)
 
-                    if response.status_code == 200:
-                        sds_version: str = json.loads(response.content)["body"]["version"]
-                    else:
-                        sds_version: str = "Sds version not found, Response status code = %s" % response.status_code
+                        if response.status_code == 200:
+                            sds_version: str = json.loads(response.content)["body"]["version"]
+                        else:
+                            sds_version: str = "Sds version not found, Response status code = %s" % response.status_code
+                    except Exception as error:
+                        sds_version = str(error)
                 else:
                     sds_version: str = "Sds is unreachable on port 9080"
 
+                logger.info(f"Sds version = {sds_version}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "sds",
@@ -712,29 +775,32 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for etl_vm in etl_vms:
+                logger.info(f"Get etl version from {etl_vm['ip']}")
                 if check_port(etl_vm["ip"], 8443):
                     headers: dict = {
                         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                     }
 
-                    etl_token = requests.post(f"https://{etl_vm['ip']}:8443/nifi-api/access/token", headers=headers,
-                                              data=f'username={pm_login}&password={pm_pass}', verify=False)
+                    try:
+                        etl_token = requests.post(f"https://{etl_vm['ip']}:8443/nifi-api/access/token", headers=headers,
+                                                  data=f'username={pm_login}&password={pm_pass}', verify=False)
+                        if etl_token.status_code == 201:
 
-                    if etl_token.status_code == 201:
+                            headers: dict = {
+                                'Authorization': 'Bearer %s' % etl_token.text
+                            }
 
-                        headers: dict = {
-                            'Authorization': 'Bearer %s' % etl_token.text
-                        }
-
-                        etl_version: str = \
-                            json.loads(requests.get(f"https://{etl_vm['ip']}:8443/nifi-api/flow/about",
-                                                    headers=headers, verify=False).content)["about"]["version"]
-                    else:
-                        etl_version: str = f"Error getting etl token, response status code = {etl_token.status_code}"
-
+                            etl_version: str = \
+                                json.loads(requests.get(f"https://{etl_vm['ip']}:8443/nifi-api/flow/about",
+                                                        headers=headers, verify=False).content)["about"]["version"]
+                        else:
+                            etl_version: str = f"Error getting etl token, response status code = {etl_token.status_code}"
+                    except Exception as error:
+                        etl_version = str(error)
                 else:
                     etl_version: str = "Etl is not available on port 8443"
 
+                logger.info(f"Etl version = {etl_version}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "nifi",
@@ -747,18 +813,22 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for datalab_vm in datalab_vms:
+                logger.info(f"Get datalab version from {datalab_vm['ip']}")
                 if check_port(datalab_vm["ip"], 8000):
-                    response = requests.get("https://%s:8000/JupyterHub/hub/api" % datalab_vm["ip"], timeout=5,
-                                            verify=False)
-
-                    if response.status_code == 200:
-                        datalab_version: str = json.loads(response.content)["version"]
-                    else:
-                        datalab_version: str = \
-                            "Datalab version not found, response status code = %s" % response.status_code
+                    try:
+                        response = requests.get("https://%s:8000/JupyterHub/hub/api" % datalab_vm["ip"], timeout=5,
+                                                verify=False)
+                        if response.status_code == 200:
+                            datalab_version: str = json.loads(response.content)["version"]
+                        else:
+                            datalab_version: str = \
+                                "Datalab version not found, response status code = %s" % response.status_code
+                    except Exception as error:
+                        datalab_version = str(error)
                 else:
                     datalab_version: str = "Datalab is not available on port 8000"
 
+                logger.info(f"Datalab version = {datalab_version}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "datalab",
@@ -771,6 +841,7 @@ def get_app_versions(portal_name: str) -> list:
                 )
 
             for ambari_vm in ambari_vms:
+                logger.info(f"Get ambari version from {ambari_vm['ip']}")
                 shell_command: str = """sudo ambari-server --version"""
                 ambari_version: str = remote_execute(shell_command, ambari_vm["ip"], ssh_login, ssh_pass)
 
@@ -780,6 +851,7 @@ def get_app_versions(portal_name: str) -> list:
                 if isinstance(ambari_version, dict):
                     ambari_version: str = ambari_version["ERROR"]
 
+                logger.info(f"Ambari version = {ambari_version.strip()}")
                 project_modules_info["modules_version"].append(
                     {
                         "tag": "ambari",
@@ -791,6 +863,30 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
+            for synapseflink_vm in synapseflink_vms:
+                logger.info(f"Get synapse flink version from {synapseflink_vm['ip']}")
+                shell_command: str = """sudo /opt/Apache/flink/bin/flink --version | grep Version"""
+                synapseflink_version: str = remote_execute(shell_command, synapseflink_vm["ip"], ssh_login, ssh_pass)
+
+                if not synapseflink_version:
+                    synapseflink_version: str = \
+                        f"ERROR: Ambari not found on {synapseflink_vm['name']}, {synapseflink_vm['ip']}"
+
+                if isinstance(synapseflink_version, dict):
+                    synapseflink_version: str = synapseflink_version["ERROR"]
+
+                logger.info(f"Synapse flink version = {synapseflink_version.strip()}")
+
+                project_modules_info["modules_version"].append(
+                    {
+                        "tag": "synapse_flink",
+                        "ip": synapseflink_vm["ip"],
+                        "id": synapseflink_vm["id"],
+                        "name": synapseflink_vm["name"],
+                        "service_name": synapseflink_vm["service_name"],
+                        "version": synapseflink_version.strip()
+                    }
+                )
     return output_info
 
 
