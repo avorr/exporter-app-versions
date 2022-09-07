@@ -16,7 +16,7 @@ with warnings.catch_warnings():
     import paramiko
 
 from env import portal_info
-from env import ssh_login, ssh_pass, pm_login, pm_pass
+from env import ssh_login, ssh_pass, pm_login, pm_pass, pm_pass_enc
 
 
 def json_read(json_object: dict) -> None:
@@ -119,7 +119,7 @@ def get_app_versions(portal_name: str) -> list:
                 filtered_info.append(vdc)
         return filtered_info
 
-    cloud_projects["stdout"]["projects"] = vdc_filter(cloud_projects["stdout"]["projects"])
+    # cloud_projects["stdout"]["projects"] = vdc_filter(cloud_projects["stdout"]["projects"])
 
     def check_port(checked_host: str, port: int) -> bool:
         """
@@ -287,7 +287,7 @@ def get_app_versions(portal_name: str) -> list:
 
             for server in project_vms["servers"]:
                 if server["tag_ids"]:
-                    if app_tags["wildfly"] in server["tag_ids"]:
+                    if app_tags["wildfly"] in server["tag_ids"]:  ## +
                         wildfly_vms.append(server)
                     elif app_tags["postgres"] in server["tag_ids"]:
                         postgres_vms.append(server)
@@ -299,9 +299,9 @@ def get_app_versions(portal_name: str) -> list:
                         ignite_vms.append(server)
                     elif app_tags["hadoop"] in server["tag_ids"]:
                         hadoop_vms.append(server)
-                    elif app_tags["sgw"] in server["tag_ids"]:
+                    elif app_tags["sgw"] in server["tag_ids"]:  ## +
                         sgw_vms.append(server)
-                    elif app_tags["iag"] in server["tag_ids"]:
+                    elif app_tags["iag"] in server["tag_ids"]:  ## +
                         iag_vms.append(server)
                     elif app_tags["etcd"] in server["tag_ids"]:
                         etcd_vms.append(server)
@@ -311,7 +311,7 @@ def get_app_versions(portal_name: str) -> list:
                         victoria_vms.append(server)
                     elif app_tags["keycloak"] in server["tag_ids"]:
                         keycloak_vms.append(server)
-                    elif app_tags["elk"] in server["tag_ids"]:
+                    elif app_tags["elk"] in server["tag_ids"]:  ## +
                         elk_vms.append(server)
                     elif app_tags["jenkinsslave"] in server["tag_ids"]:
                         jenkins_vms.append(server)
@@ -332,7 +332,7 @@ def get_app_versions(portal_name: str) -> list:
                     elif app_tags["synapse_flink"] in server["tag_ids"]:
                         synapseflink_vms.append(server)
 
-            for wildfly_vm in wildfly_vms:
+            for wildfly_vm in wildfly_vms:  ## ++++
                 wf_info_tmp: dict = get_wf_info(wildfly_vm["ip"])
                 if next(iter(wf_info_tmp)) != "ERROR":
                     wf_info_tmp: dict = {
@@ -342,7 +342,6 @@ def get_app_versions(portal_name: str) -> list:
                         "deployment": wf_info_tmp["deployment"],
                         "deployment-overlay": wf_info_tmp["deployment-overlay"]
                     }
-                    print(wf_info_tmp)
                 if next(iter(wf_info_tmp)) == "ERROR":
                     wf_info_tmp = wf_info_tmp["ERROR"]
 
@@ -363,12 +362,6 @@ def get_app_versions(portal_name: str) -> list:
                 if "etcd-" not in postgres_vm["service_name"]:
 
                     logger.info(f"Get postgres version from {postgres_vm['ip']}")
-
-                    # shell_command: str = "sudo $(sudo find /usr -user postgres -group postgres \
-                    #                      -path '*pgsql*/bin/psql*' -type f 2>/dev/null) --version | grep ^psql"
-
-                    # shell_command = "sudo su -c 'psql --version 2>/dev/null' -s /bin/bash postgres | head -n 1"
-                    # shell_command = "sudo su postgres -c 'source ~/.bash_profile; psql --version 2>/dev/null'"
 
                     shell_command = "sudo su - postgres -c 'psql --version 2>/dev/null' | grep ^psql"
 
@@ -396,7 +389,6 @@ def get_app_versions(portal_name: str) -> list:
 
             for nginx_vm in nginx_vms:
                 logger.info(f"Get nginx version from {nginx_vm['ip']}")
-                # shell_command: str = "test -f /usr/local/openresty/nginx/sbin/nginx && /usr/local/openresty/nginx/sbin/nginx -v"
                 shell_command: str = """sudo pidof -s nginx > /dev/null && $(sudo readlink -f /proc/$(sudo pidof -s nginx)/exe) -v"""
                 nginx_version: str = remote_execute(shell_command, nginx_vm["ip"], ssh_login, ssh_pass)
 
@@ -493,7 +485,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for sgw_vm in sgw_vms:
+            for sgw_vm in sgw_vms:  ## +++
                 logger.info(f"Get sgw version from {sgw_vm['ip']}")
                 if check_port(sgw_vm["ip"], 9080):
                     try:
@@ -520,7 +512,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for iag_vm in iag_vms:
+            for iag_vm in iag_vms:  ### ++++
                 logger.info(f"Get iag version from {iag_vm['ip']}")
                 if check_port(iag_vm["ip"], 9080):
                     try:
@@ -635,7 +627,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for elk_vm in elk_vms:
+            for elk_vm in elk_vms:  ### ++++
                 logger.info(f"Get elk version from {['ip']}")
                 if check_port(elk_vm["ip"], 9200):
                     try:
@@ -750,8 +742,9 @@ def get_app_versions(portal_name: str) -> list:
                 logger.info(f"Get sds version from {sds_vm['ip']}")
                 if check_port(sds_vm["ip"], 9080):
                     try:
-                        response = requests.get("http://%s:9080/ufs-session-master/rest/environment/product" %
-                                                sds_vm["ip"], timeout=5)
+                        response = requests.get(
+                            f'http://{sds_vm["ip"]}:9080/ufs-session-master/rest/environment/product', timeout=5
+                        )
 
                         if response.status_code == 200:
                             sds_version: str = json.loads(response.content)["body"]["version"]
@@ -783,16 +776,17 @@ def get_app_versions(portal_name: str) -> list:
 
                     try:
                         etl_token = requests.post(f"https://{etl_vm['ip']}:8443/nifi-api/access/token", headers=headers,
-                                                  data=f'username={pm_login}&password={pm_pass}', verify=False)
+                                                  data=f'username={pm_login}&password={pm_pass_enc}', verify=False)
+
                         if etl_token.status_code == 201:
 
                             headers: dict = {
                                 'Authorization': 'Bearer %s' % etl_token.text
                             }
 
-                            etl_version: str = \
-                                json.loads(requests.get(f"https://{etl_vm['ip']}:8443/nifi-api/flow/about",
-                                                        headers=headers, verify=False).content)["about"]["version"]
+                            etl_version: str = json.loads(
+                                requests.get(f"https://{etl_vm['ip']}:8443/nifi-api/flow/about", headers=headers,
+                                             verify=False).content)["about"]["version"]
                         else:
                             etl_version: str = f"Error getting etl token, response status code = {etl_token.status_code}"
                     except Exception as error:
