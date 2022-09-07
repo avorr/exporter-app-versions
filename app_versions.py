@@ -700,7 +700,6 @@ def get_app_versions(portal_name: str) -> list:
                                 if isinstance(ipa_version, dict):
                                     ipa_version: str = ipa_version["ERROR"]
                                     if ipa_version == f'Connection timed out to {server["ip"]}':
-                                        print("CONTINUE")
                                         continue
 
                                 logger.info(f"Ipa version = {ipa_version.strip()}")
