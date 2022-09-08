@@ -313,7 +313,7 @@ def get_app_versions(portal_name: str) -> list:
                         keycloak_vms.append(server)
                     elif app_tags["elk"] in server["tag_ids"]:  ## +
                         elk_vms.append(server)
-                    elif app_tags["jenkinsslave"] in server["tag_ids"]:
+                    elif app_tags["jenkinsslave"] in server["tag_ids"]: ## +
                         jenkins_vms.append(server)
                     elif app_tags["ipa"] in server["tag_ids"]:
                         ipa_vms.append(server)
