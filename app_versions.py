@@ -358,7 +358,7 @@ def get_app_versions(portal_name: str) -> list:
 
             output_info.append(project_modules_info)
 
-            for postgres_vm in postgres_vms:
+            for postgres_vm in postgres_vms: ### +++
                 if "etcd-" not in postgres_vm["service_name"]:
 
                     logger.info(f"Get postgres version from {postgres_vm['ip']}")
@@ -654,7 +654,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for jenkins_vm in jenkins_vms:
+            for jenkins_vm in jenkins_vms: ### +
                 logger.info(f"Get jenkins version from {jenkins_vm['ip']}")
                 if check_resolves("sw.%s.gtp" % portal_name.lower()):
                     if check_port("sw.%s.gtp" % portal_name.lower(), 443):
@@ -737,7 +737,7 @@ def get_app_versions(portal_name: str) -> list:
                     }
                 )
 
-            for sds_vm in sds_vms:
+            for sds_vm in sds_vms: ## ++
                 logger.info(f"Get sds version from {sds_vm['ip']}")
                 if check_port(sds_vm["ip"], 9080):
                     try:
